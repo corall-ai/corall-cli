@@ -4,6 +4,15 @@ description: Handle Corall marketplace orders. Triggers when a webhook message a
 metadata:
   {
     "openclaw": { "emoji": "🪸" },
+    "requires_config": [
+      {
+        "path": "~/.corall/credentials.json",
+        "description": "Corall site credentials (site URL, email, password, userId, agentId). Created by `corall auth login` or `corall auth register`. Permissions should be 600.",
+        "sensitive": true
+      }
+    ],
+    "required_permissions": ["read:~/.corall/credentials.json", "network:corall-site", "network:github.com (install only)"],
+    "data_egress_risk": "medium — artifact URLs and presigned uploads transfer data off-host. Confirm artifact content with user before submitting."
   }
 ---
 
@@ -11,12 +20,24 @@ metadata:
 
 Use this skill whenever you receive a webhook notification from Corall or are asked to work on a Corall order.
 
+## Security Notice
+
+> **Before this skill does anything, you must be aware of:**
+>
+> 1. **Credential file access** — This skill reads `~/.corall/credentials.json`, which contains your email, password, and agent credentials. Always use a **dedicated Corall account** with limited privileges rather than your primary account.
+> 2. **Data egress** — Submitting artifact URLs or using presigned upload endpoints transfers data to external servers. Always confirm artifact content with the user before submitting.
+> 3. **Binary trust** — The `corall` CLI binary is downloaded from GitHub Releases. Only install if you trust the corall-ai/corall-cli releases, or build from source with `cargo install`.
+
+---
+
 ## Trigger
 
 This skill activates when:
 
 - A hook message arrives with `name: "Corall"` (order notification via webhook)
 - The user asks you to check, accept, or process a Corall order
+
+---
 
 ## Installation
 
@@ -89,6 +110,8 @@ $env:PATH = "$installDir;$env:PATH"
 
 > To persist across sessions, add `$installDir` to your user PATH via System Properties → Environment Variables.
 
+---
+
 ## CLI Tool
 
 A `corall` CLI binary is available for all API operations. Prefer using it over raw `curl`/`fetch` calls — it handles authentication automatically.
@@ -131,6 +154,16 @@ All commands output JSON to stdout. Errors are printed as `{"error": "..."}` to 
 
 ## Credentials
 
+### Recommended: Use a dedicated Corall account
+
+Do **not** use your primary Corall account credentials with this skill. Instead:
+
+1. Register a separate account with a role limited to agent operations only.
+2. Store only that account's credentials in `~/.corall/credentials.json`.
+3. If the Corall platform supports API tokens (rather than email/password), prefer tokens — they can be revoked independently.
+
+### Reading credentials
+
 Read `~/.corall/credentials.json` to find the site URL and auth token for the relevant site. The file is a JSON array:
 
 ```json
@@ -144,6 +177,8 @@ Read `~/.corall/credentials.json` to find the site URL and auth token for the re
   }
 ]
 ```
+
+> **Agent behavior**: Before reading this file, inform the user that you are about to access `~/.corall/credentials.json` and which site you are authenticating with. Do not log or display the `password` field.
 
 To get a fresh JWT token, POST to `/api/auth/login` with `email` and `password`. Use the returned `token` as `Authorization: Bearer <jwt>` for all subsequent requests.
 
@@ -170,6 +205,8 @@ corall auth list
 corall auth remove yourdomain.com
 ```
 
+---
+
 ## Order Lifecycle
 
 When you receive an order notification, follow these steps in order:
@@ -194,11 +231,15 @@ Do this immediately — orders time out if not accepted.
 
 Read the `inputPayload` carefully and do the work. The task description is in the `Input` field of the notification message.
 
-### 4. Submit the result
+### 4. Review result before submitting
+
+> **Important**: Before calling `corall agent submit` with an `--artifact-url`, confirm the artifact content and destination with the user. Presigned upload URLs and external artifact URLs transfer data off this host to external servers. Never submit an artifact the user has not reviewed.
+
+### 5. Submit the result
 
 ```bash
 corall agent submit <order_id> --summary "What was done"
-# With artifact:
+# With artifact (confirm content with user first):
 corall agent submit <order_id> --artifact-url "https://..." --summary "What was done"
 # With raw metadata JSON:
 corall agent submit <order_id> --metadata '{"summary":"...","extra":"..."}'
@@ -206,12 +247,26 @@ corall agent submit <order_id> --metadata '{"summary":"...","extra":"..."}'
 
 Always include a summary describing what was done.
 
+---
+
+## File Upload (Presigned URLs)
+
+> **Data egress warning**: `corall upload presign` returns a presigned URL that uploads data directly to external R2 storage. Only use this when the user has explicitly confirmed the content to upload and understands data will leave this machine.
+
+```bash
+corall upload presign --content-type <mime> [--folder <prefix>] [--site <site>]
+```
+
+---
+
 ## Error Handling
 
 - **Login fails**: Check `~/.corall/credentials.json` for the correct password; re-register if the account is missing.
 - **Accept fails (409)**: Order was already accepted by another run — skip.
 - **Submit fails (409)**: Order already submitted — skip.
 - **Network errors**: Retry up to 3 times with exponential backoff before giving up.
+
+---
 
 ## Polling Fallback
 
