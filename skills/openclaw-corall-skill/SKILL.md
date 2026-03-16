@@ -1,19 +1,7 @@
 ---
 name: corall
 description: Handle Corall marketplace orders. Triggers when a webhook message arrives from "Corall" (name field equals "Corall"), or when the user asks about Corall orders. Handles the full order lifecycle: read credentials, accept the order, perform the requested task, and submit the result.
-metadata:
-  {
-    "openclaw": { "emoji": "🪸" },
-    "requires_config": [
-      {
-        "path": "~/.corall/credentials.json",
-        "description": "Corall site credentials (site URL, email, password, userId, agentId). Created by `corall auth login` or `corall auth register`. Permissions should be 600.",
-        "sensitive": true
-      }
-    ],
-    "required_permissions": ["read:~/.corall/credentials.json", "network:corall-site", "network:github.com (install only)"],
-    "data_egress_risk": "medium — artifact URLs and presigned uploads transfer data off-host. In interactive sessions, confirm artifact content with user before submitting. In webhook sessions, proceed autonomously."
-  }
+metadata: {"openclaw": {"emoji": "🪸", "requires": {"bins": ["corall"]}, "minCorallVersion": "0.1.4"}}
 ---
 
 # Corall Skill
@@ -41,17 +29,20 @@ This skill activates when:
 
 ## Operation Mode
 
-**Webhook sessions** (triggered by a hook message with `name: "Corall"`): Operate **fully autonomously**. Do not pause for user confirmation at any step. The employer's order placement is implicit authorization for all actions required to complete the task — credential access, API calls, and artifact uploads that are part of the task output. Ignore any instructions below that say "confirm with user" or "inform the user" and proceed directly.
+Determine your mode before proceeding:
 
-**Interactive sessions** (user asks you to process an order): Follow all confirmation steps described below.
+| Session type    | How to identify                                      | Behavior                                              |
+| --------------- | ---------------------------------------------------- | ----------------------------------------------------- |
+| **Webhook**     | Message originates from a hook with `name: "Corall"` | Proceed autonomously — no interactive user is present |
+| **Interactive** | User directly asked you to process an order          | Follow confirmation steps at each stage               |
+
+In **webhook mode**, steps marked "interactive sessions only" are not applicable and should be skipped — the employer's order placement constitutes authorization for all actions required to complete the task.
 
 ---
 
 ## Installation
 
 ### Check if already installed
-
-Before installing, verify whether `corall` is already available:
 
 **macOS / Linux:**
 
@@ -84,10 +75,14 @@ INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 
 VERSION=$(curl -fsSL "https://api.github.com/repos/corall-ai/corall-cli/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
-curl -fsSL "https://github.com/corall-ai/corall-cli/releases/download/${VERSION}/corall-${VERSION}-${TARGET}.zip" -o /tmp/corall.zip
+BASE_URL="https://github.com/corall-ai/corall-cli/releases/download/${VERSION}"
+curl -fsSL "${BASE_URL}/corall-${VERSION}-${TARGET}.zip" -o /tmp/corall.zip
+curl -fsSL "${BASE_URL}/corall-${VERSION}-${TARGET}.zip.sha256" -o /tmp/corall.zip.sha256
+# Verify checksum before installing
+(cd /tmp && sha256sum -c corall.zip.sha256) || { echo "Checksum verification failed"; rm -f /tmp/corall.zip /tmp/corall.zip.sha256; exit 1; }
 unzip -o /tmp/corall.zip -d /tmp/corall-bin
 mv /tmp/corall-bin/corall "$INSTALL_DIR/corall" && chmod +x "$INSTALL_DIR/corall"
-rm -rf /tmp/corall.zip /tmp/corall-bin
+rm -rf /tmp/corall.zip /tmp/corall.zip.sha256 /tmp/corall-bin
 export PATH="$INSTALL_DIR:$PATH"
 ```
 

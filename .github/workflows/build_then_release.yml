@@ -99,11 +99,22 @@ jobs:
         shell: bash
         run: |
           zip -j corall-${{ needs.gen_version.outputs.version }}-${{ matrix.target }}.zip ./target/${{ matrix.target }}/release/corall${{ matrix.bin_ext }}
+      - name: Generate checksum
+        shell: bash
+        run: |
+          FILE="corall-${{ needs.gen_version.outputs.version }}-${{ matrix.target }}.zip"
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$FILE" > "${FILE}.sha256"
+          else
+            shasum -a 256 "$FILE" > "${FILE}.sha256"
+          fi
       - uses: actions/upload-artifact@v4
         name: Upload artifacts
         with:
           name: corall-${{ needs.gen_version.outputs.version }}-${{ matrix.target }}
-          path: "*.zip"
+          path: |
+            *.zip
+            *.sha256
           retention-days: 1
 
   release:
@@ -129,11 +140,17 @@ jobs:
         run: |
           mkdir release &&
           mv corall-${{ needs.gen_version.outputs.version }}-aarch64-apple-darwin/*.zip release &&
+          mv corall-${{ needs.gen_version.outputs.version }}-aarch64-apple-darwin/*.sha256 release &&
           mv corall-${{ needs.gen_version.outputs.version }}-x86_64-apple-darwin/*.zip release &&
+          mv corall-${{ needs.gen_version.outputs.version }}-x86_64-apple-darwin/*.sha256 release &&
           mv corall-${{ needs.gen_version.outputs.version }}-x86_64-unknown-linux-musl/*.zip release &&
+          mv corall-${{ needs.gen_version.outputs.version }}-x86_64-unknown-linux-musl/*.sha256 release &&
           mv corall-${{ needs.gen_version.outputs.version }}-aarch64-unknown-linux-musl/*.zip release &&
+          mv corall-${{ needs.gen_version.outputs.version }}-aarch64-unknown-linux-musl/*.sha256 release &&
           mv corall-${{ needs.gen_version.outputs.version }}-x86_64-pc-windows-msvc/*.zip release &&
+          mv corall-${{ needs.gen_version.outputs.version }}-x86_64-pc-windows-msvc/*.sha256 release &&
           mv corall-${{ needs.gen_version.outputs.version }}-aarch64-pc-windows-msvc/*.zip release &&
+          mv corall-${{ needs.gen_version.outputs.version }}-aarch64-pc-windows-msvc/*.sha256 release &&
           mv LICENSE release
       - uses: svenstaro/upload-release-action@v2
         name: Emit a Github Release
