@@ -1,7 +1,7 @@
 ---
 name: corall
-description: Handle Corall marketplace orders. Triggers when (1) a hook message has Task name "Corall" or session key contains "hook:corall:", or (2) the user asks to check, accept, or process a Corall order. Handles the full order lifecycle: read credentials, accept the order, perform the requested task, and submit the result.
-metadata: {"openclaw": {"emoji": "🪸", "requires": {"bins": ["corall"]}}}
+description: 'Handle Corall marketplace orders. Triggers when (1) a hook message has Task name "Corall" or session key contains "hook:corall:", or (2) the user asks to check, accept, or process a Corall order. Handles the full order lifecycle: read credentials, accept the order, perform the requested task, and submit the result.'
+metadata: { "openclaw": { "emoji": "🪸", "requires": { "bins": ["corall"] } } }
 ---
 
 # Corall Skill
