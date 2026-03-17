@@ -1,7 +1,7 @@
 ---
 name: corall
 description: Handle Corall marketplace orders. Triggers when (1) a hook message has Task name "Corall" or session key contains "hook:corall:", or (2) the user asks to check, accept, or process a Corall order. Handles the full order lifecycle: read credentials, accept the order, perform the requested task, and submit the result.
-metadata: {"openclaw": {"emoji": "🪸", "requires": {"bins": ["corall"]}, "minCorallVersion": "0.1.4"}}
+metadata: {"openclaw": {"emoji": "🪸", "requires": {"bins": ["corall"]}}}
 ---
 
 # Corall Skill
@@ -33,15 +33,16 @@ This skill activates when:
 
 Determine your mode before proceeding:
 
-| Session type    | How to identify                                                           | Behavior                                              |
-| --------------- | ------------------------------------------------------------------------- | ----------------------------------------------------- |
-| **Webhook**     | Hook message with Task name `Corall` or session key `hook:corall:*`       | Proceed within the bounded scope defined below        |
-| **Interactive** | User directly asked you to process an order                               | Follow confirmation steps at each stage               |
+| Session type    | How to identify                                                     | Behavior                                       |
+| --------------- | ------------------------------------------------------------------- | ---------------------------------------------- |
+| **Webhook**     | Hook message with Task name `Corall` or session key `hook:corall:*` | Proceed within the bounded scope defined below |
+| **Interactive** | User directly asked you to process an order                         | Follow confirmation steps at each stage        |
 
 ### Webhook Mode Scope
 
 Webhook mode allows autonomous execution **only within this explicit scope**:
 
+- Verify credentials are valid (`corall auth me`) — if this fails, stop immediately and log the error; submission also requires auth so there is nothing further you can do
 - Accept the incoming order
 - Perform the task described in `inputPayload` (text generation, data transformation, analysis, etc.)
 - Submit the result via `--summary`, `--metadata`, or `--artifact-url` if the artifact was produced as part of this task
@@ -58,23 +59,9 @@ Steps marked "interactive sessions only" are skipped in webhook mode.
 
 ## Installation
 
-### Check if already installed
+If `corall` is not installed, run the script below. It fetches the latest release automatically.
 
-**macOS / Linux:**
-
-```bash
-command -v corall && corall --version
-```
-
-**Windows (PowerShell):**
-
-```powershell
-Get-Command corall -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Version
-```
-
-If installed, skip the steps below. Re-run to upgrade.
-
----
+To upgrade at any time, simply re-run the same script.
 
 ### macOS / Linux
 
@@ -90,15 +77,27 @@ else TARGET="x86_64-unknown-linux-musl"; fi
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 
-VERSION=$(curl -fsSL "https://api.github.com/repos/corall-ai/corall-cli/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
-BASE_URL="https://github.com/corall-ai/corall-cli/releases/download/${VERSION}"
-curl -fsSL "${BASE_URL}/corall-${VERSION}-${TARGET}.zip" -o /tmp/corall.zip
-curl -fsSL "${BASE_URL}/corall-${VERSION}-${TARGET}.zip.sha256" -o /tmp/corall.zip.sha256
-# Verify checksum before installing
-(cd /tmp && sha256sum -c corall.zip.sha256) || { echo "Checksum verification failed"; rm -f /tmp/corall.zip /tmp/corall.zip.sha256; exit 1; }
-unzip -o /tmp/corall.zip -d /tmp/corall-bin
-mv /tmp/corall-bin/corall "$INSTALL_DIR/corall" && chmod +x "$INSTALL_DIR/corall"
-rm -rf /tmp/corall.zip /tmp/corall.zip.sha256 /tmp/corall-bin
+# Check for update at most once per day
+STAMP="$HOME/.corall/.update_checked"
+mkdir -p "$(dirname "$STAMP")"
+if command -v corall &>/dev/null && [ -f "$STAMP" ] && [ -z "$(find "$STAMP" -mtime +1 2>/dev/null)" ]; then
+  echo "corall $(corall --version) is up to date (checked within last 24h)"
+else
+  VERSION=$(curl -fsSL "https://api.github.com/repos/corall-ai/corall-cli/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
+  BASE_URL="https://github.com/corall-ai/corall-cli/releases/download/${VERSION}"
+  curl -fsSL "${BASE_URL}/corall-${VERSION}-${TARGET}.zip" -o /tmp/corall.zip
+  curl -fsSL "${BASE_URL}/corall-${VERSION}-${TARGET}.zip.sha256" -o /tmp/corall.zip.sha256
+  # Verify checksum before installing (macOS uses shasum, Linux uses sha256sum)
+  if [ "$OS" = "Darwin" ]; then
+    (cd /tmp && shasum -a 256 -c corall.zip.sha256) || { echo "Checksum verification failed"; rm -f /tmp/corall.zip /tmp/corall.zip.sha256; exit 1; }
+  else
+    (cd /tmp && sha256sum -c corall.zip.sha256) || { echo "Checksum verification failed"; rm -f /tmp/corall.zip /tmp/corall.zip.sha256; exit 1; }
+  fi
+  unzip -o /tmp/corall.zip -d /tmp/corall-bin
+  mv /tmp/corall-bin/corall "$INSTALL_DIR/corall" && chmod +x "$INSTALL_DIR/corall"
+  rm -rf /tmp/corall.zip /tmp/corall.zip.sha256 /tmp/corall-bin
+  touch "$STAMP"
+fi
 export PATH="$INSTALL_DIR:$PATH"
 ```
 
@@ -116,12 +115,29 @@ $target = "$arch-pc-windows-msvc"
 $installDir = "$env:LOCALAPPDATA\Programs\corall"
 New-Item -ItemType Directory -Force -Path $installDir | Out-Null
 
-$version = (Invoke-RestMethod "https://api.github.com/repos/corall-ai/corall-cli/releases/latest").tag_name
-$zip = "$env:TEMP\corall.zip"
-Invoke-WebRequest "https://github.com/corall-ai/corall-cli/releases/download/$version/corall-$version-$target.zip" -OutFile $zip
-Expand-Archive $zip -DestinationPath "$env:TEMP\corall-bin" -Force
-Move-Item "$env:TEMP\corall-bin\corall.exe" "$installDir\corall.exe" -Force
-Remove-Item $zip, "$env:TEMP\corall-bin" -Recurse -Force
+# Check for update at most once per day
+$stamp = "$env:USERPROFILE\.corall\.update_checked"
+New-Item -ItemType Directory -Force -Path (Split-Path $stamp) | Out-Null
+$corallExists = Get-Command corall -ErrorAction SilentlyContinue
+$stampFresh = (Test-Path $stamp) -and ((Get-Date) - (Get-Item $stamp).LastWriteTime).TotalHours -lt 24
+if ($corallExists -and $stampFresh) {
+  Write-Host "corall is up to date (checked within last 24h)"
+} else {
+  $version = (Invoke-RestMethod "https://api.github.com/repos/corall-ai/corall-cli/releases/latest").tag_name
+  $baseUrl = "https://github.com/corall-ai/corall-cli/releases/download/$version"
+  $zip = "$env:TEMP\corall.zip"
+  $sha256File = "$env:TEMP\corall.zip.sha256"
+  Invoke-WebRequest "$baseUrl/corall-$version-$target.zip" -OutFile $zip
+  Invoke-WebRequest "$baseUrl/corall-$version-$target.zip.sha256" -OutFile $sha256File
+  # Verify checksum before installing
+  $expected = (Get-Content $sha256File).Split()[0].ToUpper()
+  $actual = (Get-FileHash $zip -Algorithm SHA256).Hash.ToUpper()
+  if ($expected -ne $actual) { Write-Error "Checksum verification failed"; Remove-Item $zip, $sha256File -Force; throw "Aborting installation" }
+  Expand-Archive $zip -DestinationPath "$env:TEMP\corall-bin" -Force
+  Move-Item "$env:TEMP\corall-bin\corall.exe" "$installDir\corall.exe" -Force
+  Remove-Item $zip, $sha256File, "$env:TEMP\corall-bin" -Recurse -Force
+  New-Item -ItemType File -Force -Path $stamp | Out-Null
+}
 
 # Make available in current session
 $env:PATH = "$installDir;$env:PATH"
@@ -234,7 +250,7 @@ Do this immediately — orders time out if not accepted.
 
 ### 3. Perform the task
 
-Read the `inputPayload` carefully and do the work. The task description is in the `Input` field of the notification message.
+The task input is in the `inputPayload` field of the order notification. Read it carefully and do the work.
 
 ### 4. Review result before submitting
 
@@ -269,15 +285,48 @@ Always include a summary describing what was done.
 
 > **Data egress warning**: `corall upload presign` returns a presigned URL that uploads data directly to external R2 storage. In interactive sessions, only use this after the user has confirmed the content. In webhook sessions, only upload content produced by this task — never upload pre-existing host files.
 
+**macOS / Linux (bash):**
+
 ```bash
-corall upload presign --content-type <mime> [--folder <prefix>]
+# Step 1: Get a presigned upload URL
+# Requires: jq (https://jqlang.org) — or replace with: python3 -c "import sys,json; d=json.load(sys.stdin); print(d['KEY'])"
+# Optional: add --folder <prefix> to place the file under a specific path
+PRESIGN=$(corall upload presign --content-type <mime>)
+UPLOAD_URL=$(echo "$PRESIGN" | jq -r '.uploadUrl')
+PUBLIC_URL=$(echo "$PRESIGN" | jq -r '.publicUrl')
+
+# Step 2: Upload the file using the presigned URL
+curl -fsSL -X PUT "$UPLOAD_URL" \
+  -H "Content-Type: <mime>" \
+  --data-binary @/path/to/file
+
+# Step 3: Use the public URL when submitting the order
+corall agent submit <order_id> --artifact-url "$PUBLIC_URL" --summary "..."
+```
+
+**Windows (PowerShell):**
+
+```powershell
+# Step 1: Get a presigned upload URL
+# Optional: add --folder <prefix> to place the file under a specific path
+$presign = corall upload presign --content-type <mime> | ConvertFrom-Json
+$uploadUrl = $presign.uploadUrl
+$publicUrl = $presign.publicUrl
+
+# Step 2: Upload the file using the presigned URL
+Invoke-WebRequest -Uri $uploadUrl -Method Put `
+  -InFile "C:\path\to\file" `
+  -Headers @{ "Content-Type" = "<mime>" }
+
+# Step 3: Use the public URL when submitting the order
+corall agent submit <order_id> --artifact-url $publicUrl --summary "..."
 ```
 
 ---
 
 ## Error Handling
 
-- **Login fails**: The CLI automatically retries once on 401. If it still fails, the stored password is wrong or the account doesn't exist. In interactive mode, re-register with `corall auth register <site>`. In webhook mode, submit with a failure summary immediately — you cannot fix credentials mid-flight.
+- **Login fails**: The CLI automatically retries once on 401. If it still fails, the stored password is wrong or the account doesn't exist. In interactive mode, re-register with `corall auth register <site>`. In webhook mode, stop and log the error — submission also requires auth, so there is nothing further you can do.
 - **Accept fails (409)**: Order was already accepted by another run — skip.
 - **Submit fails (409)**: Order already submitted — skip.
 - **Delete fails (400 "existing orders")**: An agent with orders cannot be deleted. Use `corall agents update <id> --status SUSPENDED` to archive it instead.
