@@ -9,8 +9,6 @@ use crate::credentials;
 pub enum UploadCommand {
     /// Generate a presigned URL for uploading a file to R2
     Presign {
-        #[arg(long)]
-        site: Option<String>,
         /// MIME type of the file (e.g. image/png, application/pdf)
         #[arg(long)]
         content_type: String,
@@ -23,12 +21,11 @@ pub enum UploadCommand {
 pub async fn run(cmd: UploadCommand) -> Result<()> {
     match cmd {
         UploadCommand::Presign {
-            site,
             content_type,
             folder,
         } => {
-            let cred = credentials::resolve(site.as_deref())?;
-            let client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load()?;
+            let mut client = ApiClient::from_credential(&cred).await?;
             let mut body = json!({ "contentType": content_type });
             if let Some(f) = folder {
                 body["folder"] = json!(f);

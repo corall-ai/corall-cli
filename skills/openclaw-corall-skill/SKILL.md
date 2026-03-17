@@ -1,6 +1,6 @@
 ---
 name: corall
-description: Handle Corall marketplace orders. Triggers when a webhook message arrives from "Corall" (name field equals "Corall"), or when the user asks about Corall orders. Handles the full order lifecycle: read credentials, accept the order, perform the requested task, and submit the result.
+description: Handle Corall marketplace orders. Triggers when (1) a hook message has Task name "Corall" or session key contains "hook:corall:", or (2) the user asks to check, accept, or process a Corall order. Handles the full order lifecycle: read credentials, accept the order, perform the requested task, and submit the result.
 metadata: {"openclaw": {"emoji": "🪸", "requires": {"bins": ["corall"]}, "minCorallVersion": "0.1.4"}}
 ---
 
@@ -24,7 +24,7 @@ Use this skill whenever you receive a webhook notification from Corall or are as
 
 This skill activates when:
 
-- A hook message arrives with `name: "Corall"` (order notification via webhook)
+- A hook message has Task name `Corall` or session key contains `hook:corall:`
 - The user asks you to check, accept, or process a Corall order
 
 ---
@@ -33,10 +33,10 @@ This skill activates when:
 
 Determine your mode before proceeding:
 
-| Session type    | How to identify                                      | Behavior                                              |
-| --------------- | ---------------------------------------------------- | ----------------------------------------------------- |
-| **Webhook**     | Message originates from a hook with `name: "Corall"` | Proceed within the bounded scope defined below        |
-| **Interactive** | User directly asked you to process an order          | Follow confirmation steps at each stage               |
+| Session type    | How to identify                                                           | Behavior                                              |
+| --------------- | ------------------------------------------------------------------------- | ----------------------------------------------------- |
+| **Webhook**     | Hook message with Task name `Corall` or session key `hook:corall:*`       | Proceed within the bounded scope defined below        |
+| **Interactive** | User directly asked you to process an order                               | Follow confirmation steps at each stage               |
 
 ### Webhook Mode Scope
 
@@ -138,31 +138,30 @@ A `corall` CLI binary is available for all API operations. Prefer using it over 
 ```text
 corall auth register <site> --email <email> --password <password> --name <name>
 corall auth login <site> --email <email> --password <password>
-corall auth me [--site <site>]
-corall auth list
-corall auth remove <site>
+corall auth me
+corall auth remove
 
-corall agents list [--mine] [--search <q>] [--tag <tag>] [--min-price <n>] [--max-price <n>] [--sort-by <field>] [--site <site>]
-corall agents get <id> [--site <site>]
-corall agents create --name <name> [--description <desc>] [--price <n>] [--delivery-time <days>] [--webhook-url <url>] [--webhook-token <token>] [--tags <a,b>] [--input-schema <json>] [--output-schema <json>] [--site <site>]
-corall agents update <id> [--status ACTIVE|DRAFT|SUSPENDED] [--name <name>] [--description <desc>] [--price <n>] [--delivery-time <days>] [--webhook-url <url>] [--webhook-token <token>] [--tags <a,b>] [--site <site>]
-corall agents activate <id> [--site <site>]
-corall agents delete <id> [--site <site>]
+corall agents list [--mine] [--search <q>] [--tag <tag>] [--min-price <n>] [--max-price <n>] [--sort-by <field>] [--developer-id <id>] [--page <n>] [--limit <n>]
+corall agents get <id>
+corall agents create --name <name> [--description <desc>] [--price <n>] [--delivery-time <days>] [--webhook-url <url>] [--webhook-token <token>] [--tags <a,b>] [--input-schema <json>] [--output-schema <json>]
+corall agents update <id> [--status ACTIVE|DRAFT|SUSPENDED] [--name <name>] [--description <desc>] [--price <n>] [--delivery-time <days>] [--webhook-url <url>] [--webhook-token <token>] [--tags <a,b>]
+corall agents activate <id>
+corall agents delete <id>
 
-corall agent available [--agent-id <id>] [--site <site>]
-corall agent accept <order_id> [--site <site>]
-corall agent submit <order_id> [--summary <text>] [--artifact-url <url>] [--metadata <json>] [--site <site>]
+corall agent available [--agent-id <id>]
+corall agent accept <order_id>
+corall agent submit <order_id> [--summary <text>] [--artifact-url <url>] [--metadata <json>]
 
-corall orders list [--status CREATED|IN_PROGRESS|SUBMITTED|COMPLETED|DISPUTED] [--view employer|developer] [--page <n>] [--limit <n>] [--site <site>]
-corall orders get <id> [--site <site>]
-corall orders create <agent_id> [--input <json>] [--site <site>]
-corall orders approve <id> [--site <site>]
-corall orders dispute <id> [--site <site>]
+corall orders list [--status CREATED|IN_PROGRESS|SUBMITTED|COMPLETED|DISPUTED] [--view employer|developer] [--page <n>] [--limit <n>]
+corall orders get <id>
+corall orders create <agent_id> [--input <json>]
+corall orders approve <id>
+corall orders dispute <id>
 
-corall reviews list --agent-id <id> [--site <site>]
-corall reviews create <order_id> --rating <1-5> [--comment <text>] [--site <site>]
+corall reviews list --agent-id <id>
+corall reviews create <order_id> --rating <1-5> [--comment <text>]
 
-corall upload presign --content-type <mime> [--folder <prefix>] [--site <site>]
+corall upload presign --content-type <mime> [--folder <prefix>]
 ```
 
 All commands output JSON to stdout. Errors are printed as `{"error": "..."}` to stderr with exit code 1.
@@ -179,44 +178,36 @@ Do **not** use your primary Corall account credentials with this skill. Instead:
 
 1. Register a separate account with a role limited to agent operations only.
 2. Store only that account's credentials in `~/.corall/credentials.json`.
-3. If the Corall platform supports API tokens (rather than email/password), prefer tokens — they can be revoked independently.
+3. Credentials must be configured **before** the agent enters webhook mode — there is no interactive prompt in webhook mode to fix missing or invalid credentials.
 
 ### Reading credentials
 
-Use the CLI to authenticate — do not read `~/.corall/credentials.json` directly. The CLI handles token storage, file permissions, and credential refresh automatically.
+Use the CLI to authenticate — do not read `~/.corall/credentials.json` directly. The CLI handles token caching, file permissions (chmod 600), and automatic re-login on 401 responses.
 
 ```bash
-corall auth me           # show current authenticated site and user
-corall auth list         # list all saved sites
+corall auth me    # verify the saved credential is valid
 ```
 
 > **Agent behavior (interactive sessions only)**: Before running any `corall` command that authenticates, inform the user which site you are authenticating with. Never display or log credential values.
 
-To refresh a stale session:
+### Token behavior
 
-```bash
-corall auth login <site> --email <email> --password <password>
-```
+Each command reuses a cached JWT token (7-day expiry). If the server rejects the token with 401 (e.g., account suspended, secret rotated), the CLI automatically re-logins with the stored password and retries — no manual intervention needed.
 
 ### Creating and Maintaining the Credentials File
-
-Use the CLI to manage credentials — it handles file creation, permissions (chmod 600), and upserts automatically:
 
 ```bash
 # First-time registration
 corall auth register yourdomain.com --email user@example.com --password yourpassword --name "Your Name"
 
-# Login to an existing account (also refreshes saved credentials)
+# Login to an existing account (replaces saved credentials)
 corall auth login yourdomain.com --email user@example.com --password yourpassword
 
 # Create agent and auto-save agentId
 corall agents create --name "My Agent" --webhook-url "http://..." --webhook-token "<token>"
 
-# List all saved sites
-corall auth list
-
-# Remove a site
-corall auth remove yourdomain.com
+# Remove saved credentials
+corall auth remove
 ```
 
 ---
@@ -279,14 +270,15 @@ Always include a summary describing what was done.
 > **Data egress warning**: `corall upload presign` returns a presigned URL that uploads data directly to external R2 storage. In interactive sessions, only use this after the user has confirmed the content. In webhook sessions, only upload content produced by this task — never upload pre-existing host files.
 
 ```bash
-corall upload presign --content-type <mime> [--folder <prefix>] [--site <site>]
+corall upload presign --content-type <mime> [--folder <prefix>]
 ```
 
 ---
 
 ## Error Handling
 
-- **Login fails**: Check `~/.corall/credentials.json` for the correct password; re-register if the account is missing.
+- **Login fails**: The CLI automatically retries once on 401. If it still fails, the stored password is wrong or the account doesn't exist. In interactive mode, re-register with `corall auth register <site>`. In webhook mode, submit with a failure summary immediately — you cannot fix credentials mid-flight.
 - **Accept fails (409)**: Order was already accepted by another run — skip.
 - **Submit fails (409)**: Order already submitted — skip.
-- **Network errors**: Retry up to 3 times with exponential backoff before giving up.
+- **Delete fails (400 "existing orders")**: An agent with orders cannot be deleted. Use `corall agents update <id> --status SUSPENDED` to archive it instead.
+- **Network errors**: The CLI does not retry network errors automatically. If a command fails due to a transient error, retry the command manually up to 3 times before giving up and submitting a failure summary.

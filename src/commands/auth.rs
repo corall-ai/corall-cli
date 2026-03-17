@@ -35,18 +35,9 @@ pub enum AuthCommand {
         password: String,
     },
     /// Show current authenticated user info
-    Me {
-        /// Site hostname (required if multiple sites configured)
-        #[arg(long)]
-        site: Option<String>,
-    },
-    /// List all locally stored credential entries
-    List,
-    /// Remove a credential entry
-    Remove {
-        /// Site hostname to remove
-        site: String,
-    },
+    Me,
+    /// Remove saved credentials
+    Remove,
 }
 
 pub async fn run(cmd: AuthCommand) -> Result<()> {
@@ -57,7 +48,7 @@ pub async fn run(cmd: AuthCommand) -> Result<()> {
             password,
             name,
         } => {
-            let client = ApiClient::new(site_to_base_url(&site));
+            let mut client = ApiClient::new(site_to_base_url(&site));
             let body = json!({ "email": email, "password": password, "name": name });
             let resp = client.post("/api/auth/register", &body).await?;
 
@@ -72,13 +63,15 @@ pub async fn run(cmd: AuthCommand) -> Result<()> {
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
 
-            credentials::upsert(Credential {
-                site: site.clone(),
+            credentials::save(&Credential {
+                site,
                 email,
                 password,
                 user_id,
                 agent_id: None,
                 registered_at,
+                token: None,
+                token_expires_at: None,
             })?;
 
             println!("{}", serde_json::to_string_pretty(&resp)?);
@@ -89,7 +82,7 @@ pub async fn run(cmd: AuthCommand) -> Result<()> {
             email,
             password,
         } => {
-            let client = ApiClient::new(site_to_base_url(&site));
+            let mut client = ApiClient::new(site_to_base_url(&site));
             let body = json!({ "email": email, "password": password });
             let resp = client.post("/api/auth/login", &body).await?;
 
@@ -100,59 +93,36 @@ pub async fn run(cmd: AuthCommand) -> Result<()> {
                 .unwrap_or("")
                 .to_string();
 
-            // Preserve existing agentId if already set
-            let existing = credentials::load()?;
-            let agent_id = existing
-                .iter()
-                .find(|c| c.site == site)
-                .and_then(|c| c.agent_id.clone());
+            // Preserve existing agentId if already set for this site.
+            let agent_id = credentials::load()
+                .ok()
+                .filter(|c| c.site == site)
+                .and_then(|c| c.agent_id);
 
-            credentials::upsert(Credential {
+            credentials::save(&Credential {
                 site,
                 email,
                 password,
                 user_id,
                 agent_id,
                 registered_at: None,
+                token: None,
+                token_expires_at: None,
             })?;
 
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
 
-        AuthCommand::Me { site } => {
-            let cred = credentials::resolve(site.as_deref())?;
-            let client = ApiClient::from_credential(&cred).await?;
+        AuthCommand::Me => {
+            let cred = credentials::load()?;
+            let mut client = ApiClient::from_credential(&cred).await?;
             let resp = client.get("/api/auth/me").await?;
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
 
-        AuthCommand::List => {
-            let creds = credentials::load()?;
-            // Omit passwords from output
-            let sanitized: Vec<_> = creds
-                .iter()
-                .map(|c| {
-                    json!({
-                        "site": c.site,
-                        "email": c.email,
-                        "userId": c.user_id,
-                        "agentId": c.agent_id,
-                        "registeredAt": c.registered_at,
-                    })
-                })
-                .collect();
-            println!("{}", serde_json::to_string_pretty(&sanitized)?);
-        }
-
-        AuthCommand::Remove { site } => {
-            let mut creds = credentials::load()?;
-            let before = creds.len();
-            creds.retain(|c| c.site != site);
-            if creds.len() == before {
-                anyhow::bail!("no credentials found for site: {site}");
-            }
-            credentials::save(&creds)?;
-            println!("{}", json!({ "removed": site }));
+        AuthCommand::Remove => {
+            let removed = credentials::remove()?;
+            println!("{}", json!({ "removed": removed }));
         }
     }
     Ok(())

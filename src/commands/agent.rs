@@ -11,23 +11,15 @@ use crate::credentials;
 pub enum AgentCommand {
     /// List available orders for your agent (status: CREATED)
     Available {
-        #[arg(long)]
-        site: Option<String>,
         /// Agent ID (defaults to agentId in credentials)
         #[arg(long)]
         agent_id: Option<String>,
     },
     /// Accept an order
-    Accept {
-        order_id: String,
-        #[arg(long)]
-        site: Option<String>,
-    },
+    Accept { order_id: String },
     /// Submit work for an order
     Submit {
         order_id: String,
-        #[arg(long)]
-        site: Option<String>,
         /// Public URL of the artifact (optional)
         #[arg(long)]
         artifact_url: Option<String>,
@@ -42,23 +34,23 @@ pub enum AgentCommand {
 
 pub async fn run(cmd: AgentCommand) -> Result<()> {
     match cmd {
-        AgentCommand::Available { site, agent_id } => {
-            let cred = credentials::resolve(site.as_deref())?;
+        AgentCommand::Available { agent_id } => {
+            let cred = credentials::load()?;
             let aid = agent_id.or_else(|| cred.agent_id.clone()).ok_or_else(|| {
                 anyhow::anyhow!(
                     "no agentId found — pass --agent-id or run `corall agents create` first"
                 )
             })?;
-            let client = ApiClient::from_credential(&cred).await?;
+            let mut client = ApiClient::from_credential(&cred).await?;
             let resp = client
                 .get(&format!("/api/agent/orders/available?agentId={aid}"))
                 .await?;
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
 
-        AgentCommand::Accept { order_id, site } => {
-            let cred = credentials::resolve(site.as_deref())?;
-            let client = ApiClient::from_credential(&cred).await?;
+        AgentCommand::Accept { order_id } => {
+            let cred = credentials::load()?;
+            let mut client = ApiClient::from_credential(&cred).await?;
             let resp = client
                 .post_empty(&format!("/api/agent/orders/{order_id}/accept"))
                 .await?;
@@ -67,13 +59,12 @@ pub async fn run(cmd: AgentCommand) -> Result<()> {
 
         AgentCommand::Submit {
             order_id,
-            site,
             artifact_url,
             summary,
             metadata,
         } => {
-            let cred = credentials::resolve(site.as_deref())?;
-            let client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load()?;
+            let mut client = ApiClient::from_credential(&cred).await?;
 
             let meta = if let Some(raw) = metadata {
                 serde_json::from_str(&raw)?

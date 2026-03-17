@@ -11,8 +11,6 @@ pub enum AgentsCommand {
     /// List agents
     List {
         #[arg(long)]
-        site: Option<String>,
-        #[arg(long)]
         search: Option<String>,
         #[arg(long)]
         tag: Option<String>,
@@ -33,15 +31,9 @@ pub enum AgentsCommand {
         developer_id: Option<String>,
     },
     /// Get a single agent by ID
-    Get {
-        id: String,
-        #[arg(long)]
-        site: Option<String>,
-    },
+    Get { id: String },
     /// Create a new agent
     Create {
-        #[arg(long)]
-        site: Option<String>,
         #[arg(long)]
         name: String,
         #[arg(long)]
@@ -67,8 +59,6 @@ pub enum AgentsCommand {
     Update {
         id: String,
         #[arg(long)]
-        site: Option<String>,
-        #[arg(long)]
         name: Option<String>,
         #[arg(long)]
         description: Option<String>,
@@ -86,23 +76,14 @@ pub enum AgentsCommand {
         webhook_token: Option<String>,
     },
     /// Delete an agent
-    Delete {
-        id: String,
-        #[arg(long)]
-        site: Option<String>,
-    },
+    Delete { id: String },
     /// Activate a draft agent
-    Activate {
-        id: String,
-        #[arg(long)]
-        site: Option<String>,
-    },
+    Activate { id: String },
 }
 
 pub async fn run(cmd: AgentsCommand) -> Result<()> {
     match cmd {
         AgentsCommand::List {
-            site,
             search,
             tag,
             min_price,
@@ -113,8 +94,8 @@ pub async fn run(cmd: AgentsCommand) -> Result<()> {
             mine,
             developer_id,
         } => {
-            let cred = credentials::resolve(site.as_deref())?;
-            let client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load()?;
+            let mut client = ApiClient::from_credential(&cred).await?;
             let mut params = vec![format!("page={page}"), format!("limit={limit}")];
             if let Some(s) = search {
                 params.push(format!("search={s}"));
@@ -142,15 +123,14 @@ pub async fn run(cmd: AgentsCommand) -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
 
-        AgentsCommand::Get { id, site } => {
-            let cred = credentials::resolve(site.as_deref())?;
-            let client = ApiClient::from_credential(&cred).await?;
+        AgentsCommand::Get { id } => {
+            let cred = credentials::load()?;
+            let mut client = ApiClient::from_credential(&cred).await?;
             let resp = client.get(&format!("/api/agents/{id}")).await?;
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
 
         AgentsCommand::Create {
-            site,
             name,
             description,
             tags,
@@ -161,8 +141,8 @@ pub async fn run(cmd: AgentsCommand) -> Result<()> {
             input_schema,
             output_schema,
         } => {
-            let cred = credentials::resolve(site.as_deref())?;
-            let client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load()?;
+            let mut client = ApiClient::from_credential(&cred).await?;
 
             let mut body = json!({ "name": name });
             if let Some(v) = description {
@@ -198,7 +178,7 @@ pub async fn run(cmd: AgentsCommand) -> Result<()> {
                 .and_then(|a| a.get("id"))
                 .and_then(|v| v.as_str())
             {
-                credentials::set_agent_id(&cred.site, agent_id)?;
+                credentials::set_agent_id(agent_id)?;
             }
 
             println!("{}", serde_json::to_string_pretty(&resp)?);
@@ -206,7 +186,6 @@ pub async fn run(cmd: AgentsCommand) -> Result<()> {
 
         AgentsCommand::Update {
             id,
-            site,
             name,
             description,
             tags,
@@ -216,8 +195,8 @@ pub async fn run(cmd: AgentsCommand) -> Result<()> {
             webhook_url,
             webhook_token,
         } => {
-            let cred = credentials::resolve(site.as_deref())?;
-            let client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load()?;
+            let mut client = ApiClient::from_credential(&cred).await?;
 
             let mut body = json!({});
             if let Some(v) = name {
@@ -249,16 +228,16 @@ pub async fn run(cmd: AgentsCommand) -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
 
-        AgentsCommand::Delete { id, site } => {
-            let cred = credentials::resolve(site.as_deref())?;
-            let client = ApiClient::from_credential(&cred).await?;
+        AgentsCommand::Delete { id } => {
+            let cred = credentials::load()?;
+            let mut client = ApiClient::from_credential(&cred).await?;
             client.delete(&format!("/api/agents/{id}")).await?;
             println!("{}", json!({ "deleted": id }));
         }
 
-        AgentsCommand::Activate { id, site } => {
-            let cred = credentials::resolve(site.as_deref())?;
-            let client = ApiClient::from_credential(&cred).await?;
+        AgentsCommand::Activate { id } => {
+            let cred = credentials::load()?;
+            let mut client = ApiClient::from_credential(&cred).await?;
             let resp = client
                 .put(&format!("/api/agents/{id}"), &json!({ "status": "ACTIVE" }))
                 .await?;

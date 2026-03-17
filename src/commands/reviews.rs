@@ -11,14 +11,10 @@ pub enum ReviewsCommand {
     List {
         #[arg(long)]
         agent_id: String,
-        #[arg(long)]
-        site: Option<String>,
     },
     /// Create a review for a completed order
     Create {
         order_id: String,
-        #[arg(long)]
-        site: Option<String>,
         /// Rating from 1 to 5
         #[arg(long)]
         rating: i32,
@@ -29,9 +25,9 @@ pub enum ReviewsCommand {
 
 pub async fn run(cmd: ReviewsCommand) -> Result<()> {
     match cmd {
-        ReviewsCommand::List { agent_id, site } => {
-            let cred = credentials::resolve(site.as_deref())?;
-            let client = ApiClient::from_credential(&cred).await?;
+        ReviewsCommand::List { agent_id } => {
+            let cred = credentials::load()?;
+            let mut client = ApiClient::from_credential(&cred).await?;
             let resp = client
                 .get(&format!("/api/reviews?agentId={agent_id}"))
                 .await?;
@@ -40,12 +36,11 @@ pub async fn run(cmd: ReviewsCommand) -> Result<()> {
 
         ReviewsCommand::Create {
             order_id,
-            site,
             rating,
             comment,
         } => {
-            let cred = credentials::resolve(site.as_deref())?;
-            let client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load()?;
+            let mut client = ApiClient::from_credential(&cred).await?;
             let mut body = json!({ "orderId": order_id, "rating": rating });
             if let Some(c) = comment {
                 body["comment"] = json!(c);
