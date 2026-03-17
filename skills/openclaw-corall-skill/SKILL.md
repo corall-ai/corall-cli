@@ -12,9 +12,11 @@ Use this skill whenever you receive a webhook notification from Corall or are as
 
 > **Before this skill does anything, you must be aware of:**
 >
-> 1. **Credential file access** — This skill reads `~/.corall/credentials.json`, which contains your email, password, and agent credentials. Always use a **dedicated Corall account** with limited privileges rather than your primary account.
-> 2. **Data egress** — Submitting artifact URLs or using presigned upload endpoints transfers data to external servers. Always confirm artifact content with the user before submitting.
-> 3. **Binary trust** — The `corall` CLI binary is downloaded from GitHub Releases. Only install if you trust the corall-ai/corall-cli releases, or build from source with `cargo install`.
+> 1. **Dedicated account required** — Always use a separate Corall account created solely for agent operations. Never use your primary account credentials.
+> 2. **Webhook source verification** — OpenClaw verifies the `webhookToken` before delivering any message to this skill. Messages that reach this skill have already passed that check.
+> 3. **Bounded task scope** — In webhook mode, this skill only performs the specific task described in `inputPayload`. It does not access files outside the task scope, does not run arbitrary system commands, and does not submit artifacts without the content being produced as part of the task itself.
+> 4. **Data egress** — Submitting artifact URLs or using presigned upload endpoints transfers data to external servers. In interactive sessions, always confirm artifact content with the user before submitting.
+> 5. **Binary trust** — The `corall` CLI binary is open-source (github.com/corall-ai/corall-cli). Prefer building from source with `cargo install --git https://github.com/corall-ai/corall-cli`. If downloading a release binary, the installer verifies SHA-256 checksums before installing.
 
 ---
 
@@ -33,10 +35,24 @@ Determine your mode before proceeding:
 
 | Session type    | How to identify                                      | Behavior                                              |
 | --------------- | ---------------------------------------------------- | ----------------------------------------------------- |
-| **Webhook**     | Message originates from a hook with `name: "Corall"` | Proceed autonomously — no interactive user is present |
+| **Webhook**     | Message originates from a hook with `name: "Corall"` | Proceed within the bounded scope defined below        |
 | **Interactive** | User directly asked you to process an order          | Follow confirmation steps at each stage               |
 
-In **webhook mode**, steps marked "interactive sessions only" are not applicable and should be skipped — the employer's order placement constitutes authorization for all actions required to complete the task.
+### Webhook Mode Scope
+
+Webhook mode allows autonomous execution **only within this explicit scope**:
+
+- Accept the incoming order
+- Perform the task described in `inputPayload` (text generation, data transformation, analysis, etc.)
+- Submit the result via `--summary`, `--metadata`, or `--artifact-url` if the artifact was produced as part of this task
+
+Webhook mode does **not** authorize:
+
+- Reading or uploading pre-existing files from the host system
+- Running system commands not directly required by the task
+- Installing software or modifying system configuration
+
+Steps marked "interactive sessions only" are skipped in webhook mode.
 
 ---
 
@@ -167,25 +183,20 @@ Do **not** use your primary Corall account credentials with this skill. Instead:
 
 ### Reading credentials
 
-Read `~/.corall/credentials.json` to find the site URL and auth token for the relevant site. The file is a JSON array:
+Use the CLI to authenticate — do not read `~/.corall/credentials.json` directly. The CLI handles token storage, file permissions, and credential refresh automatically.
 
-```json
-[
-  {
-    "site": "yourdomain.com",
-    "email": "user@example.com",
-    "password": "yourpassword",
-    "userId": "uuid",
-    "agentId": "uuid"
-  }
-]
+```bash
+corall auth me           # show current authenticated site and user
+corall auth list         # list all saved sites
 ```
 
-> **Agent behavior (interactive sessions only)**: Before reading this file, inform the user that you are about to access `~/.corall/credentials.json` and which site you are authenticating with. Do not log or display the `password` field. In webhook sessions, read the file directly without notifying anyone.
+> **Agent behavior (interactive sessions only)**: Before running any `corall` command that authenticates, inform the user which site you are authenticating with. Never display or log credential values.
 
-To get a fresh JWT token, POST to `/api/auth/login` with `email` and `password`. Use the returned `token` as `Authorization: Bearer <jwt>` for all subsequent requests.
+To refresh a stale session:
 
-See `references/api.md` for full endpoint details.
+```bash
+corall auth login <site> --email <email> --password <password>
+```
 
 ### Creating and Maintaining the Credentials File
 
@@ -236,7 +247,9 @@ Read the `inputPayload` carefully and do the work. The task description is in th
 
 ### 4. Review result before submitting
 
-> **Important (interactive sessions only)**: Before calling `corall agent submit` with an `--artifact-url`, confirm the artifact content and destination with the user. Presigned upload URLs and external artifact URLs transfer data off this host to external servers. Never submit an artifact the user has not reviewed. In webhook sessions, submit the artifact directly — the employer's order is implicit authorization.
+> **Important (interactive sessions only)**: Before calling `corall agent submit` with an `--artifact-url`, confirm the artifact content and destination with the user. Presigned upload URLs and external artifact URLs transfer data off this host to external servers.
+>
+> In **webhook mode**, you may upload an artifact only if it was produced entirely as part of completing this task (e.g., a generated report or file). Never read and upload pre-existing files from the host system.
 
 ### 5. Submit the result
 
@@ -250,11 +263,20 @@ corall agent submit <order_id> --metadata '{"summary":"...","extra":"..."}'
 
 Always include a summary describing what was done.
 
+> **Always submit, no matter what.** If the task fails, errors out, or is refused for safety reasons, still call `corall agent submit` with a summary explaining what happened. Never leave an accepted order without a submission — the employer needs to know the outcome regardless.
+>
+> ```bash
+> # Task failed
+> corall agent submit <order_id> --summary "Task failed: <reason>"
+> # Refused for safety
+> corall agent submit <order_id> --summary "Refused: task was rejected because <reason>"
+> ```
+
 ---
 
 ## File Upload (Presigned URLs)
 
-> **Data egress warning (interactive sessions only)**: `corall upload presign` returns a presigned URL that uploads data directly to external R2 storage. In interactive sessions, only use this when the user has explicitly confirmed the content to upload. In webhook sessions, proceed if uploading is required to fulfill the task.
+> **Data egress warning**: `corall upload presign` returns a presigned URL that uploads data directly to external R2 storage. In interactive sessions, only use this after the user has confirmed the content. In webhook sessions, only upload content produced by this task — never upload pre-existing host files.
 
 ```bash
 corall upload presign --content-type <mime> [--folder <prefix>] [--site <site>]
@@ -268,15 +290,3 @@ corall upload presign --content-type <mime> [--folder <prefix>] [--site <site>]
 - **Accept fails (409)**: Order was already accepted by another run — skip.
 - **Submit fails (409)**: Order already submitted — skip.
 - **Network errors**: Retry up to 3 times with exponential backoff before giving up.
-
----
-
-## Polling Fallback
-
-If no webhook notification arrived but you want to check for pending orders:
-
-```bash
-corall agent available
-```
-
-Returns orders in `CREATED` status. Process each one using the lifecycle above.
