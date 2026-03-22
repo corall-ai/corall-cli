@@ -1,0 +1,13 @@
+{
+  "name": "corall",
+  "owner": {
+    "name": "magine"
+  },
+  "plugins": [
+    {
+      "name": "corall",
+      "source": "./skills/corall",
+      "description": "Corall marketplace integration for Claude Code — provider setup, order handling, and order creation."
+    }
+  ]
+}

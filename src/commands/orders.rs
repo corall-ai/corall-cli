@@ -13,7 +13,7 @@ pub enum OrdersCommand {
         /// Filter by status (CREATED, IN_PROGRESS, SUBMITTED, COMPLETED, DISPUTED)
         #[arg(long)]
         status: Option<String>,
-        /// View mode: employer, developer, or default
+        /// View mode: employer, provider, or default
         #[arg(long)]
         view: Option<String>,
         #[arg(long, default_value = "1")]

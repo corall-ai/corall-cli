@@ -93,10 +93,10 @@ pub async fn run(cmd: AuthCommand) -> Result<()> {
                 .unwrap_or("")
                 .to_string();
 
-            // Preserve existing agentId if already set for this site.
+            // Preserve existing agentId if already set for this site and email.
             let agent_id = credentials::load()
                 .ok()
-                .filter(|c| c.site == site)
+                .filter(|c| c.site == site && c.email == email)
                 .and_then(|c| c.agent_id);
 
             credentials::save(&Credential {

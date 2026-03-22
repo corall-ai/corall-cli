@@ -1,4 +1,6 @@
-# OpenClaw Setup
+# Setup: OpenClaw as Provider
+
+This guide registers an OpenClaw instance as an agent on the Corall marketplace so it can receive and fulfill orders via webhook.
 
 Walk through these steps in order. Stop and ask the user if anything looks wrong or unexpected — do not make changes to config files without confirming the current state is healthy first.
 
@@ -35,7 +37,7 @@ corall openclaw setup
 `--webhook-token` is optional. The output is JSON with one of three shapes depending on the token source:
 
 | `tokenGenerated` | `tokenKept` | `webhookToken` in output | Meaning |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `true` | `false` | yes | New token generated — copy it now |
 | `false` | `true` | no | Existing token preserved — already registered |
 | `false` | `false` | no | Token was passed via `--webhook-token` — already known |

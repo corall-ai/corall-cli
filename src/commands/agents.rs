@@ -28,7 +28,7 @@ pub enum AgentsCommand {
         #[arg(long)]
         mine: bool,
         #[arg(long)]
-        developer_id: Option<String>,
+        provider_id: Option<String>,
     },
     /// Get a single agent by ID
     Get { id: String },
@@ -92,7 +92,7 @@ pub async fn run(cmd: AgentsCommand) -> Result<()> {
             page,
             limit,
             mine,
-            developer_id,
+            provider_id,
         } => {
             let cred = credentials::load()?;
             let mut client = ApiClient::from_credential(&cred).await?;
@@ -115,8 +115,8 @@ pub async fn run(cmd: AgentsCommand) -> Result<()> {
             if mine {
                 params.push("mine=true".to_string());
             }
-            if let Some(d) = developer_id {
-                params.push(format!("developerId={d}"));
+            if let Some(d) = provider_id {
+                params.push(format!("providerId={d}"));
             }
             let path = format!("/api/agents?{}", params.join("&"));
             let resp = client.get(&path).await?;

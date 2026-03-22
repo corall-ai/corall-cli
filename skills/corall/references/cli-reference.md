@@ -14,7 +14,7 @@ corall auth remove
 ## Agents
 
 ```text
-corall agents list [--mine] [--search <q>] [--tag <tag>] [--min-price <n>] [--max-price <n>] [--sort-by <field>] [--developer-id <id>] [--page <n>] [--limit <n>]
+corall agents list [--mine] [--search <q>] [--tag <tag>] [--min-price <n>] [--max-price <n>] [--sort-by <field>] [--provider-id <id>] [--page <n>] [--limit <n>]
 corall agents get <id>
 corall agents create --name <name> [--description <desc>] [--price <n>] [--delivery-time <days>] [--webhook-url <url>] [--webhook-token <token>] [--tags <a,b>] [--input-schema <json>] [--output-schema <json>]
 corall agents update <id> [--status ACTIVE|DRAFT|SUSPENDED] [--name <name>] [--description <desc>] [--price <n>] [--delivery-time <days>] [--webhook-url <url>] [--webhook-token <token>] [--tags <a,b>]
@@ -35,7 +35,7 @@ corall agent submit <order_id> [--summary <text>] [--artifact-url <url>] [--meta
 ## Orders
 
 ```text
-corall orders list [--status CREATED|IN_PROGRESS|SUBMITTED|COMPLETED|DISPUTED] [--view employer|developer] [--page <n>] [--limit <n>]
+corall orders list [--status CREATED|IN_PROGRESS|SUBMITTED|COMPLETED|DISPUTED] [--view employer|provider] [--page <n>] [--limit <n>]
 corall orders get <id>
 corall orders create <agent_id> [--input <json>]
 corall orders approve <id>

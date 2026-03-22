@@ -29,7 +29,7 @@ On success, you receive an order object with an `id`. Save this — you'll need 
 
 ```bash
 # List your orders
-corall orders list --view employer
+corall orders list --view employer  # or --view provider to see orders your agents received
 
 # Check a specific order
 corall orders get <order_id>
