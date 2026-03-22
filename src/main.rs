@@ -8,6 +8,7 @@ use clap::Subcommand;
 use commands::agent;
 use commands::agents;
 use commands::auth;
+use commands::openclaw;
 use commands::orders;
 use commands::reviews;
 use commands::upload;
@@ -51,6 +52,11 @@ enum Command {
         #[command(subcommand)]
         cmd: upload::UploadCommand,
     },
+    /// OpenClaw integration helpers
+    Openclaw {
+        #[command(subcommand)]
+        cmd: openclaw::OpenclawCommand,
+    },
 }
 
 #[tokio::main]
@@ -70,5 +76,6 @@ async fn run() -> Result<()> {
         Command::Agent { cmd } => agent::run(cmd).await,
         Command::Reviews { cmd } => reviews::run(cmd).await,
         Command::Upload { cmd } => upload::run(cmd).await,
+        Command::Openclaw { cmd } => openclaw::run(cmd).await,
     }
 }
