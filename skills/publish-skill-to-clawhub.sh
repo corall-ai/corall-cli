@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SLUG="corall"
-SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)/skills/openclaw-corall-skill"
+SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)/skills/corall"
 VERSION="${1:-}"
 CHANGELOG="${2:-}"
 

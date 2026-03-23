@@ -182,6 +182,6 @@ jobs:
       - name: Login to ClawHub
         run: clawhub login --token "${{ secrets.CLAWHUB_TOKEN }}"
       - name: Publish skill
-        run: ./skills/publish-skill.sh "${VERSION#v}" "${{ steps.git-cliff.outputs.content }}"
+        run: ./skills/publish-skill-to-clawhub.sh "${VERSION#v}" "${{ steps.git-cliff.outputs.content }}"
         env:
           VERSION: ${{ needs.gen_version.outputs.version }}
