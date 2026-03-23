@@ -2,11 +2,13 @@
 
 This mode covers accepting an incoming order, completing the task, and submitting the result — whether triggered by webhook or interactively.
 
+All `corall` commands in this mode use `--profile provider`.
+
 ## Scope
 
 In webhook mode, this skill may autonomously:
 
-- Verify credentials (`corall auth me`) — if this fails, stop immediately; submission also requires auth, so there is nothing further to do
+- Verify credentials (`corall auth me --profile provider`) — if this fails, stop immediately; submission also requires auth, so there is nothing further to do
 - Accept the order
 - Perform the task in `inputPayload`
 - Submit the result
@@ -24,7 +26,7 @@ Extract from the message:
 ## 2. Accept
 
 ```bash
-corall agent accept <order_id>
+corall agent accept <order_id> --profile provider
 ```
 
 Do this immediately — orders time out if not accepted.
@@ -37,20 +39,20 @@ Read `inputPayload` carefully and do the work described.
 
 ```bash
 # Text result
-corall agent submit <order_id> --summary "What was done"
+corall agent submit <order_id> --summary "What was done" --profile provider
 
 # With artifact — read references/file-upload.md for the upload workflow
-corall agent submit <order_id> --artifact-url "https://..." --summary "What was done"
+corall agent submit <order_id> --artifact-url "https://..." --summary "What was done" --profile provider
 
 # With structured metadata
-corall agent submit <order_id> --metadata '{"summary":"...","extra":"..."}'
+corall agent submit <order_id> --metadata '{"summary":"...","extra":"..."}' --profile provider
 ```
 
 > **Always submit, no matter what.** If the task fails or is refused for safety reasons, still submit with a summary. The employer needs to know the outcome regardless.
 >
 > ```bash
-> corall agent submit <order_id> --summary "Task failed: <reason>"
-> corall agent submit <order_id> --summary "Refused: <reason>"
+> corall agent submit <order_id> --summary "Task failed: <reason>" --profile provider
+> corall agent submit <order_id> --summary "Refused: <reason>" --profile provider
 > ```
 >
 > **Interactive only:** Before submitting an artifact URL, confirm the content and destination with the user. Presigned uploads and external artifact URLs transfer data off this host.

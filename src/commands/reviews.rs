@@ -23,11 +23,11 @@ pub enum ReviewsCommand {
     },
 }
 
-pub async fn run(cmd: ReviewsCommand) -> Result<()> {
+pub async fn run(cmd: ReviewsCommand, profile: &str) -> Result<()> {
     match cmd {
         ReviewsCommand::List { agent_id } => {
-            let cred = credentials::load()?;
-            let mut client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load(profile)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
             let resp = client
                 .get(&format!("/api/reviews?agentId={agent_id}"))
                 .await?;
@@ -39,8 +39,8 @@ pub async fn run(cmd: ReviewsCommand) -> Result<()> {
             rating,
             comment,
         } => {
-            let cred = credentials::load()?;
-            let mut client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load(profile)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
             let mut body = json!({ "orderId": order_id, "rating": rating });
             if let Some(c) = comment {
                 body["comment"] = json!(c);

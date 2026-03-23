@@ -18,14 +18,14 @@ pub enum UploadCommand {
     },
 }
 
-pub async fn run(cmd: UploadCommand) -> Result<()> {
+pub async fn run(cmd: UploadCommand, profile: &str) -> Result<()> {
     match cmd {
         UploadCommand::Presign {
             content_type,
             folder,
         } => {
-            let cred = credentials::load()?;
-            let mut client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load(profile)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
             let mut body = json!({ "contentType": content_type });
             if let Some(f) = folder {
                 body["folder"] = json!(f);

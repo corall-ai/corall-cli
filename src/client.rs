@@ -17,6 +17,8 @@ pub struct ApiClient {
     token: Option<String>,
     /// Stored credential enables automatic re-login on 401.
     credential: Option<Credential>,
+    /// Profile name used to persist refreshed tokens.
+    profile: String,
 }
 
 impl ApiClient {
@@ -26,11 +28,15 @@ impl ApiClient {
             base_url: base_url.into().trim_end_matches('/').to_string(),
             token: None,
             credential: None,
+            profile: "default".to_string(),
         }
     }
 
-    pub async fn from_credential(cred: &Credential) -> Result<Self> {
-        let mut client = ApiClient::new(crate::credentials::site_to_base_url(&cred.site));
+    pub async fn from_credential(cred: &Credential, profile: &str) -> Result<Self> {
+        let mut client = ApiClient {
+            profile: profile.to_string(),
+            ..ApiClient::new(crate::credentials::site_to_base_url(&cred.site))
+        };
         client.credential = Some(cred.clone());
         if let Some(cached) = cred.cached_token() {
             client.token = Some(cached.to_string());
@@ -53,7 +59,7 @@ impl ApiClient {
             token_expires_at: Some(expires_at),
             ..cred.clone()
         };
-        crate::credentials::save(&updated)?;
+        crate::credentials::save(&self.profile, &updated)?;
         self.token = Some(token);
         self.credential = Some(updated);
         Ok(())

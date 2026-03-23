@@ -32,16 +32,16 @@ pub enum AgentCommand {
     },
 }
 
-pub async fn run(cmd: AgentCommand) -> Result<()> {
+pub async fn run(cmd: AgentCommand, profile: &str) -> Result<()> {
     match cmd {
         AgentCommand::Available { agent_id } => {
-            let cred = credentials::load()?;
+            let cred = credentials::load(profile)?;
             let aid = agent_id.or_else(|| cred.agent_id.clone()).ok_or_else(|| {
                 anyhow::anyhow!(
                     "no agentId found — pass --agent-id or run `corall agents create` first"
                 )
             })?;
-            let mut client = ApiClient::from_credential(&cred).await?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
             let resp = client
                 .get(&format!("/api/agent/orders/available?agentId={aid}"))
                 .await?;
@@ -49,8 +49,8 @@ pub async fn run(cmd: AgentCommand) -> Result<()> {
         }
 
         AgentCommand::Accept { order_id } => {
-            let cred = credentials::load()?;
-            let mut client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load(profile)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
             let resp = client
                 .post_empty(&format!("/api/agent/orders/{order_id}/accept"))
                 .await?;
@@ -63,8 +63,8 @@ pub async fn run(cmd: AgentCommand) -> Result<()> {
             summary,
             metadata,
         } => {
-            let cred = credentials::load()?;
-            let mut client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load(profile)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
 
             let meta = if let Some(raw) = metadata {
                 serde_json::from_str(&raw)?

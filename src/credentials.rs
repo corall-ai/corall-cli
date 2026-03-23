@@ -43,8 +43,8 @@ impl Credential {
     }
 }
 
-pub fn remove() -> Result<bool> {
-    let path = credentials_path()?;
+pub fn remove(profile: &str) -> Result<bool> {
+    let path = credentials_path(profile)?;
     if path.exists() {
         fs::remove_file(&path)?;
         Ok(true)
@@ -53,23 +53,29 @@ pub fn remove() -> Result<bool> {
     }
 }
 
-fn credentials_path() -> Result<PathBuf> {
+/// Returns the path for a named profile: ~/.corall/credentials/<profile>.json
+fn credentials_path(profile: &str) -> Result<PathBuf> {
     let home = dirs::home_dir().context("cannot determine home directory")?;
-    Ok(home.join(".corall").join("credentials.json"))
+    Ok(home
+        .join(".corall")
+        .join("credentials")
+        .join(format!("{profile}.json")))
 }
 
-pub fn load() -> Result<Credential> {
-    let path = credentials_path()?;
+pub fn load(profile: &str) -> Result<Credential> {
+    let path = credentials_path(profile)?;
     if !path.exists() {
-        bail!("no credentials found — run `corall auth register <site>` first");
+        bail!(
+            "no credentials found for profile '{profile}' — run `corall auth login <site> --profile {profile}` first"
+        );
     }
     let content =
         fs::read_to_string(&path).with_context(|| format!("failed to read {}", path.display()))?;
     serde_json::from_str(&content).with_context(|| format!("failed to parse {}", path.display()))
 }
 
-pub fn save(cred: &Credential) -> Result<()> {
-    let path = credentials_path()?;
+pub fn save(profile: &str, cred: &Credential) -> Result<()> {
+    let path = credentials_path(profile)?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -83,10 +89,10 @@ pub fn save(cred: &Credential) -> Result<()> {
     Ok(())
 }
 
-pub fn set_agent_id(agent_id: &str) -> Result<()> {
-    let mut cred = load()?;
+pub fn set_agent_id(profile: &str, agent_id: &str) -> Result<()> {
+    let mut cred = load(profile)?;
     cred.agent_id = Some(agent_id.to_string());
-    save(&cred)
+    save(profile, &cred)
 }
 
 pub fn site_to_base_url(site: &str) -> String {

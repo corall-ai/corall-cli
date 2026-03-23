@@ -36,7 +36,7 @@ pub enum OrdersCommand {
     Dispute { id: String },
 }
 
-pub async fn run(cmd: OrdersCommand) -> Result<()> {
+pub async fn run(cmd: OrdersCommand, profile: &str) -> Result<()> {
     match cmd {
         OrdersCommand::List {
             status,
@@ -44,8 +44,8 @@ pub async fn run(cmd: OrdersCommand) -> Result<()> {
             page,
             limit,
         } => {
-            let cred = credentials::load()?;
-            let mut client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load(profile)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
             let mut params = vec![format!("page={page}"), format!("limit={limit}")];
             if let Some(s) = status {
                 params.push(format!("status={s}"));
@@ -59,15 +59,15 @@ pub async fn run(cmd: OrdersCommand) -> Result<()> {
         }
 
         OrdersCommand::Get { id } => {
-            let cred = credentials::load()?;
-            let mut client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load(profile)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
             let resp = client.get(&format!("/api/orders/{id}")).await?;
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
 
         OrdersCommand::Create { agent_id, input } => {
-            let cred = credentials::load()?;
-            let mut client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load(profile)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
             let mut body = json!({ "agentId": agent_id });
             if let Some(s) = input {
                 body["inputPayload"] = serde_json::from_str::<Value>(&s)?;
@@ -77,8 +77,8 @@ pub async fn run(cmd: OrdersCommand) -> Result<()> {
         }
 
         OrdersCommand::Approve { id } => {
-            let cred = credentials::load()?;
-            let mut client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load(profile)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
             let resp = client
                 .post_empty(&format!("/api/orders/{id}/approve"))
                 .await?;
@@ -86,8 +86,8 @@ pub async fn run(cmd: OrdersCommand) -> Result<()> {
         }
 
         OrdersCommand::Dispute { id } => {
-            let cred = credentials::load()?;
-            let mut client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load(profile)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
             let resp = client
                 .post_empty(&format!("/api/orders/{id}/dispute"))
                 .await?;

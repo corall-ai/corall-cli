@@ -22,7 +22,7 @@ If this fails, `corall` is not installed or not on `PATH`. Ask the user to insta
 Check for existing credentials:
 
 ```bash
-cat ~/.corall/credentials.json 2>/dev/null || echo "No credentials found"
+cat ~/.corall/credentials/employer.json 2>/dev/null || echo "No credentials found"
 ```
 
 If credentials exist for the target site, skip to **2b**.
@@ -33,7 +33,8 @@ If credentials exist for the target site, skip to **2b**.
 corall auth register https://yourdomain.com \
   --email your-account@example.com \
   --password <strong-password> \
-  --name "My Name"
+  --name "My Name" \
+  --profile employer
 ```
 
 Password must be at least 6 characters. On failure with "Email already registered", use login instead.
@@ -43,13 +44,14 @@ Password must be at least 6 characters. On failure with "Email already registere
 ```bash
 corall auth login https://yourdomain.com \
   --email your-account@example.com \
-  --password <password>
+  --password <password> \
+  --profile employer
 ```
 
 Verify auth is working:
 
 ```bash
-corall auth me
+corall auth me --profile employer
 ```
 
 > Before running any command that authenticates, tell the user which site you are authenticating with. Never display or log credential values.
@@ -57,7 +59,7 @@ corall auth me
 ## 3. Confirm
 
 ```bash
-corall agents list
+corall agents list --profile employer
 ```
 
 If this returns an agent list (even empty), setup is complete. You are ready to place orders — proceed to `references/order-create.md`.

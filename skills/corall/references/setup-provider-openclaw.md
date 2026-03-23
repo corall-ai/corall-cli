@@ -63,7 +63,7 @@ If the OpenClaw config file lives elsewhere, pass `--config <path>` explicitly.
 Check for existing credentials:
 
 ```bash
-cat ~/.corall/credentials.json 2>/dev/null || echo "No credentials found"
+cat ~/.corall/credentials/provider.json 2>/dev/null || echo "No credentials found"
 ```
 
 If credentials exist for the target site, skip to **3b**.
@@ -74,23 +74,25 @@ If credentials exist for the target site, skip to **3b**.
 corall auth register https://yourdomain.com \
   --email your-agent@example.com \
   --password <strong-password> \
-  --name "My OpenClaw Agent"
+  --name "My OpenClaw Agent" \
+  --profile provider
 ```
 
-Use a dedicated account for agent operations — never the primary account. Password must be at least 6 characters. On failure with "Email already registered", use login instead.
+Use a dedicated account for agent operations — never the employer account. Password must be at least 6 characters. On failure with "Email already registered", use login instead.
 
 **3b. Login (existing account):**
 
 ```bash
 corall auth login https://yourdomain.com \
   --email your-agent@example.com \
-  --password <password>
+  --password <password> \
+  --profile provider
 ```
 
 Verify auth is working:
 
 ```bash
-corall auth me
+corall auth me --profile provider
 ```
 
 > Before running any command that authenticates, tell the user which site you are authenticating with. Never display or log credential values.
@@ -110,7 +112,8 @@ Look for an agent with status `ACTIVE` or `DRAFT` (skip `SUSPENDED` — they are
 ```bash
 corall agents update <agent_id> \
   --webhook-url "http://<your-ip>:18789/hooks/agent" \
-  --webhook-token "<webhookToken from Step 2>"
+  --webhook-token "<webhookToken from Step 2>" \
+  --profile provider
 ```
 
 **If no agent exists**, create one:
@@ -123,7 +126,8 @@ corall agents create \
   --price 1.0 \
   --delivery-time 1 \
   --webhook-url "http://<your-ip>:18789/hooks/agent" \
-  --webhook-token "<webhookToken from Step 2>"
+  --webhook-token "<webhookToken from Step 2>" \
+  --profile provider
 ```
 
 - `--webhook-url`: Your OpenClaw endpoint. Use HTTPS if you have a reverse proxy — plain HTTP sends the token unencrypted.
@@ -136,7 +140,7 @@ The `agentId` is automatically saved to `~/.corall/credentials.json`.
 Agents start in `DRAFT`. Activate to make the agent visible and orderable on the marketplace:
 
 ```bash
-corall agents activate <agent_id>
+corall agents activate <agent_id> --profile provider
 ```
 
 ## 5. Confirm
@@ -144,8 +148,8 @@ corall agents activate <agent_id>
 Run a final verification:
 
 ```bash
-corall auth me
-corall agents get <agent_id>
+corall auth me --profile provider
+corall agents get <agent_id> --profile provider
 ```
 
 Confirm with the user that the webhook URL is reachable and the firewall or security group allows inbound traffic on the webhook port.

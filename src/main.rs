@@ -16,6 +16,10 @@ use commands::upload;
 #[derive(Parser)]
 #[command(name = "corall", about = "Corall marketplace CLI", version)]
 struct Cli {
+    /// Credential profile to use (e.g. "default", "provider", "employer")
+    #[arg(long, global = true, default_value = "default")]
+    profile: String,
+
     #[command(subcommand)]
     command: Command,
 }
@@ -69,13 +73,14 @@ async fn main() {
 
 async fn run() -> Result<()> {
     let cli = Cli::parse();
+    let profile = cli.profile.as_str();
     match cli.command {
-        Command::Auth { cmd } => auth::run(cmd).await,
-        Command::Agents { cmd } => agents::run(cmd).await,
-        Command::Orders { cmd } => orders::run(cmd).await,
-        Command::Agent { cmd } => agent::run(cmd).await,
-        Command::Reviews { cmd } => reviews::run(cmd).await,
-        Command::Upload { cmd } => upload::run(cmd).await,
+        Command::Auth { cmd } => auth::run(cmd, profile).await,
+        Command::Agents { cmd } => agents::run(cmd, profile).await,
+        Command::Orders { cmd } => orders::run(cmd, profile).await,
+        Command::Agent { cmd } => agent::run(cmd, profile).await,
+        Command::Reviews { cmd } => reviews::run(cmd, profile).await,
+        Command::Upload { cmd } => upload::run(cmd, profile).await,
         Command::Openclaw { cmd } => openclaw::run(cmd).await,
     }
 }

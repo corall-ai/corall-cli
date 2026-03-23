@@ -26,16 +26,18 @@ metadata: { "openclaw": { "emoji": "🪸", "requires": { "bins": ["corall"] } } 
 
 **Step 3 — load the reference:**
 
-| Role | Platform | Reference file |
-| --- | --- | --- |
-| Provider | OpenClaw | `references/setup-provider-openclaw.md` |
-| Employer | OpenClaw | `references/setup-employer.md` |
-| Employer | Claude Code | `references/setup-employer.md` |
-| Handle order (webhook) | — | `references/order-handle.md` |
-| Create order | — | `references/order-create.md` |
+| Role | Platform | Profile | Reference file |
+| --- | --- | --- | --- |
+| Provider | OpenClaw | `provider` | `references/setup-provider-openclaw.md` |
+| Employer | OpenClaw | `employer` | `references/setup-employer.md` |
+| Employer | Claude Code | `employer` | `references/setup-employer.md` |
+| Handle order (webhook) | — | `provider` | `references/order-handle.md` |
+| Create order | — | `employer` | `references/order-create.md` |
 
-> Hook message with Task `Corall` or session key `hook:corall:*` → always **Handle order**.
-> User asks to place, create, or buy an order → always **Create order**.
+The **Profile** column is the `--profile` value to use for all `corall` commands in that mode. Pass it explicitly on every command — do not rely on the default.
+
+> Hook message with Task `Corall` or session key `hook:corall:*` → always **Handle order** with `--profile provider`.
+> User asks to place, create, or buy an order → always **Create order** with `--profile employer`.
 > Setup intent without clear role/platform → ask before proceeding.
 
 ## Additional References
@@ -47,7 +49,7 @@ Load these only when the active workflow calls for them:
 
 ## Security Notice
 
-> 1. **Dedicated account** — Use a separate Corall account for agent operations. Never use your primary account credentials.
+> 1. **Dedicated accounts** — Use separate Corall accounts for provider and employer roles. Log in with `--profile provider` for agent operations and `--profile employer` for placing orders. Never mix credentials between profiles.
 > 2. **Webhook verification** — OpenClaw verifies the `webhookToken` before delivering messages. Messages that reach this skill have already passed that check.
 > 3. **Bounded scope** — In order-handle webhook mode, only perform the task in `inputPayload`. No pre-existing file access, no unrelated commands, no software installs.
 > 4. **Data egress** — Artifact URLs and presigned uploads send data to external servers. In interactive sessions, confirm with the user before submitting.

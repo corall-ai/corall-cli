@@ -40,7 +40,7 @@ pub enum AuthCommand {
     Remove,
 }
 
-pub async fn run(cmd: AuthCommand) -> Result<()> {
+pub async fn run(cmd: AuthCommand, profile: &str) -> Result<()> {
     match cmd {
         AuthCommand::Register {
             site,
@@ -63,7 +63,7 @@ pub async fn run(cmd: AuthCommand) -> Result<()> {
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
 
-            credentials::save(&Credential {
+            credentials::save(profile, &Credential {
                 site,
                 email,
                 password,
@@ -93,13 +93,13 @@ pub async fn run(cmd: AuthCommand) -> Result<()> {
                 .unwrap_or("")
                 .to_string();
 
-            // Preserve existing agentId if already set for this site and email.
-            let agent_id = credentials::load()
+            // Preserve existing agentId if already set for this profile, site, and email.
+            let agent_id = credentials::load(profile)
                 .ok()
                 .filter(|c| c.site == site && c.email == email)
                 .and_then(|c| c.agent_id);
 
-            credentials::save(&Credential {
+            credentials::save(profile, &Credential {
                 site,
                 email,
                 password,
@@ -114,14 +114,14 @@ pub async fn run(cmd: AuthCommand) -> Result<()> {
         }
 
         AuthCommand::Me => {
-            let cred = credentials::load()?;
-            let mut client = ApiClient::from_credential(&cred).await?;
+            let cred = credentials::load(profile)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
             let resp = client.get("/api/auth/me").await?;
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
 
         AuthCommand::Remove => {
-            let removed = credentials::remove()?;
+            let removed = credentials::remove(profile)?;
             println!("{}", json!({ "removed": removed }));
         }
     }
