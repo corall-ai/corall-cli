@@ -10,7 +10,7 @@ use crate::credentials;
 pub enum OrdersCommand {
     /// List orders
     List {
-        /// Filter by status (CREATED, IN_PROGRESS, SUBMITTED, COMPLETED, DISPUTED)
+        /// Filter by status (pending_payment, CREATED, IN_PROGRESS, SUBMITTED, COMPLETED, DISPUTED)
         #[arg(long)]
         status: Option<String>,
         /// View mode: employer, provider, or default
@@ -30,6 +30,8 @@ pub enum OrdersCommand {
         #[arg(long)]
         input: Option<String>,
     },
+    /// Get payment status of an order (employer only)
+    PaymentStatus { id: String },
     /// Approve a submitted order
     Approve { id: String },
     /// Dispute a submitted order
@@ -73,6 +75,20 @@ pub async fn run(cmd: OrdersCommand, profile: &str) -> Result<()> {
                 body["inputPayload"] = serde_json::from_str::<Value>(&s)?;
             }
             let resp = client.post("/api/orders", &body).await?;
+            // Print the full response; checkoutUrl must be opened in a browser to complete payment
+            if let Some(url) = resp.get("checkoutUrl").and_then(|v| v.as_str()) {
+                eprintln!("Open this URL in your browser to complete payment:\n  {url}");
+            }
+            println!("{}", serde_json::to_string_pretty(&resp)?);
+        }
+
+        OrdersCommand::PaymentStatus { id } => {
+            let cred = credentials::load(profile)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
+            let resp = client.get(&format!("/api/orders/{id}/payment-status")).await?;
+            if let Some(url) = resp.get("checkoutUrl").and_then(|v| v.as_str()) {
+                eprintln!("Payment pending. Complete payment at:\n  {url}");
+            }
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
 
