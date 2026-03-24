@@ -10,6 +10,8 @@ pub enum ConnectCommand {
     Onboard,
     /// Check Stripe Connect account status (payouts enabled, onboarding status)
     Status,
+    /// Transfer pending earnings from completed orders to your Stripe account
+    Payout,
 }
 
 pub async fn run(cmd: ConnectCommand, profile: &str) -> Result<()> {
@@ -28,6 +30,13 @@ pub async fn run(cmd: ConnectCommand, profile: &str) -> Result<()> {
             let cred = credentials::load(profile)?;
             let mut client = ApiClient::from_credential(&cred, profile).await?;
             let resp = client.get("/api/connect/status").await?;
+            println!("{}", serde_json::to_string_pretty(&resp)?);
+        }
+
+        ConnectCommand::Payout => {
+            let cred = credentials::load(profile)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
+            let resp = client.post_empty("/api/connect/payout").await?;
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
     }
