@@ -19,7 +19,9 @@ pub enum ConnectCommand {
 fn handle_onboarding_required(status: StatusCode, body: &serde_json::Value) -> bool {
     if status == StatusCode::PAYMENT_REQUIRED {
         if let Some(url) = body.get("onboardingUrl").and_then(|v| v.as_str()) {
-            eprintln!("Stripe Connect onboarding required. Open this URL in your browser:\n  {url}");
+            eprintln!(
+                "Stripe Connect onboarding required. Open this URL in your browser:\n  {url}"
+            );
         }
         if let Some(err) = body.get("error").and_then(|v| v.as_str()) {
             eprintln!("  {err}");
@@ -49,7 +51,10 @@ pub async fn run(cmd: ConnectCommand, profile: &str) -> Result<()> {
                 return Ok(());
             }
             if !status.is_success() {
-                let msg = body.get("error").and_then(|v| v.as_str()).unwrap_or("unknown error");
+                let msg = body
+                    .get("error")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown error");
                 anyhow::bail!("HTTP {status}: {msg}");
             }
             println!("{}", serde_json::to_string_pretty(&body)?);
@@ -63,7 +68,10 @@ pub async fn run(cmd: ConnectCommand, profile: &str) -> Result<()> {
                 return Ok(());
             }
             if !status.is_success() {
-                let msg = body.get("error").and_then(|v| v.as_str()).unwrap_or("unknown error");
+                let msg = body
+                    .get("error")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown error");
                 anyhow::bail!("HTTP {status}: {msg}");
             }
             println!("{}", serde_json::to_string_pretty(&body)?);

@@ -15,7 +15,8 @@ pub enum AgentsCommand {
         #[arg(long)]
         tag: Option<String>,
         #[arg(long)]
-        min_price: Option<i64>,        #[arg(long)]
+        min_price: Option<i64>,
+        #[arg(long)]
         max_price: Option<i64>,
         #[arg(long)]
         sort_by: Option<String>,

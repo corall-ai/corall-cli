@@ -87,9 +87,13 @@ impl ApiClient {
     async fn handle(response: Response) -> Result<Value> {
         let status = response.status();
         let url = response.url().to_string();
-        let raw = response.text().await.context("failed to read response body")?;
-        let body: Value = serde_json::from_str(&raw)
-            .with_context(|| format!("failed to parse response as JSON (HTTP {status} from {url}): {raw}"))?;
+        let raw = response
+            .text()
+            .await
+            .context("failed to read response body")?;
+        let body: Value = serde_json::from_str(&raw).with_context(|| {
+            format!("failed to parse response as JSON (HTTP {status} from {url}): {raw}")
+        })?;
         if !status.is_success() {
             let msg = body
                 .get("error")
@@ -167,8 +171,9 @@ impl ApiClient {
         let status = resp.status();
         let url = resp.url().to_string();
         let raw = resp.text().await.context("failed to read response body")?;
-        let body: Value = serde_json::from_str(&raw)
-            .with_context(|| format!("failed to parse response as JSON (HTTP {status} from {url}): {raw}"))?;
+        let body: Value = serde_json::from_str(&raw).with_context(|| {
+            format!("failed to parse response as JSON (HTTP {status} from {url}): {raw}")
+        })?;
         Ok((status, body))
     }
 
@@ -180,8 +185,9 @@ impl ApiClient {
         let status = resp.status();
         let url = resp.url().to_string();
         let raw = resp.text().await.context("failed to read response body")?;
-        let body: Value = serde_json::from_str(&raw)
-            .with_context(|| format!("failed to parse response as JSON (HTTP {status} from {url}): {raw}"))?;
+        let body: Value = serde_json::from_str(&raw).with_context(|| {
+            format!("failed to parse response as JSON (HTTP {status} from {url}): {raw}")
+        })?;
         Ok((status, body))
     }
 

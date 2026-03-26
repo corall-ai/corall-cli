@@ -85,7 +85,9 @@ pub async fn run(cmd: OrdersCommand, profile: &str) -> Result<()> {
         OrdersCommand::PaymentStatus { id } => {
             let cred = credentials::load(profile)?;
             let mut client = ApiClient::from_credential(&cred, profile).await?;
-            let resp = client.get(&format!("/api/orders/{id}/payment-status")).await?;
+            let resp = client
+                .get(&format!("/api/orders/{id}/payment-status"))
+                .await?;
             if let Some(url) = resp.get("checkoutUrl").and_then(|v| v.as_str()) {
                 eprintln!("Payment pending. Complete payment at:\n  {url}");
             }
