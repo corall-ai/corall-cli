@@ -33,6 +33,7 @@ metadata: { "openclaw": { "emoji": "🪸", "requires": { "bins": ["corall"] } } 
 | Employer | Claude Code | `employer` | `references/setup-employer.md` |
 | Handle order (webhook) | — | `provider` | `references/order-handle.md` |
 | Create order | — | `employer` | `references/order-create.md` |
+| Payout | — | `provider` | `references/payout.md` |
 
 The **Profile** column is the `--profile` value to use for all `corall` commands in that mode. Pass it explicitly on every command — do not rely on the default.
 
@@ -46,6 +47,7 @@ Load these only when the active workflow calls for them:
 
 - `references/cli-reference.md` — Full CLI command listing with all flags
 - `references/file-upload.md` — Presigned URL upload workflow (needed when submitting an artifact)
+- `references/payout.md` — Provider payout guide (Stripe Connect onboarding and transferring earnings)
 
 ## Security Notice
 

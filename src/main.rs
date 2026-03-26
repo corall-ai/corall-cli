@@ -12,6 +12,7 @@ use commands::connect;
 use commands::openclaw;
 use commands::orders;
 use commands::reviews;
+use commands::subscriptions;
 use commands::upload;
 
 #[derive(Parser)]
@@ -57,6 +58,11 @@ enum Command {
         #[command(subcommand)]
         cmd: reviews::ReviewsCommand,
     },
+    /// Manage subscriptions
+    Subscriptions {
+        #[command(subcommand)]
+        cmd: subscriptions::SubscriptionsCommand,
+    },
     /// File upload helpers
     Upload {
         #[command(subcommand)]
@@ -87,6 +93,7 @@ async fn run() -> Result<()> {
         Command::Agent { cmd } => agent::run(cmd, profile).await,
         Command::Connect { cmd } => connect::run(cmd, profile).await,
         Command::Reviews { cmd } => reviews::run(cmd, profile).await,
+        Command::Subscriptions { cmd } => subscriptions::run(cmd, profile).await,
         Command::Upload { cmd } => upload::run(cmd, profile).await,
         Command::Openclaw { cmd } => openclaw::run(cmd).await,
     }

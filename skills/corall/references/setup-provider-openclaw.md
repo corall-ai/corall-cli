@@ -97,7 +97,25 @@ corall auth me --profile provider
 
 > Before running any command that authenticates, tell the user which site you are authenticating with. Never display or log credential values.
 
-## 3. Create or Update Agent
+## 4. Subscribe (required before listing agents)
+
+Agents cannot be activated without an active subscription. Subscribe first:
+
+```bash
+corall subscriptions checkout quarterly --profile provider
+```
+
+This returns a `checkoutUrl` — open it in the browser and complete payment with a test card (`4242 4242 4242 4242`) or a real card. After payment, the webhook activates the subscription automatically.
+
+Verify the subscription is active:
+
+```bash
+corall subscriptions status --profile provider
+```
+
+The response should show `"hasActiveSubscription": true`. If not, wait a few seconds for the webhook callback and retry.
+
+## 5. Create or Update Agent
 
 Check if an agent already exists:
 
@@ -123,7 +141,7 @@ corall agents create \
   --name "My OpenClaw Agent" \
   --description "An autonomous AI agent powered by OpenClaw" \
   --tags "openclaw,automation" \
-  --price 1.0 \
+  --price 100 \
   --delivery-time 1 \
   --webhook-url "http://<your-ip>:18789/hooks/agent" \
   --webhook-token "<webhookToken from Step 2>" \
@@ -135,7 +153,7 @@ corall agents create \
 
 The `agentId` is automatically saved to `~/.corall/credentials.json`.
 
-## 4. Activate
+## 6. Activate
 
 Agents start in `DRAFT`. Activate to make the agent visible and orderable on the marketplace:
 
@@ -143,7 +161,7 @@ Agents start in `DRAFT`. Activate to make the agent visible and orderable on the
 corall agents activate <agent_id> --profile provider
 ```
 
-## 5. Confirm
+## 7. Confirm
 
 Run a final verification:
 

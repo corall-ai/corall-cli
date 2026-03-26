@@ -86,10 +86,10 @@ impl ApiClient {
 
     async fn handle(response: Response) -> Result<Value> {
         let status = response.status();
-        let body: Value = response
-            .json()
-            .await
-            .context("failed to parse response as JSON")?;
+        let url = response.url().to_string();
+        let raw = response.text().await.context("failed to read response body")?;
+        let body: Value = serde_json::from_str(&raw)
+            .with_context(|| format!("failed to parse response as JSON (HTTP {status} from {url}): {raw}"))?;
         if !status.is_success() {
             let msg = body
                 .get("error")
@@ -158,6 +158,31 @@ impl ApiClient {
             .send_raw_with_refresh(Method::POST, path, |r| r.header("content-length", "0"))
             .await?;
         Self::handle(resp).await
+    }
+
+    /// Like `get` but returns the status code along with the parsed body,
+    /// so callers can handle specific error codes (e.g. 402).
+    pub async fn get_raw(&mut self, path: &str) -> Result<(StatusCode, Value)> {
+        let resp = self.send_raw_with_refresh(Method::GET, path, |r| r).await?;
+        let status = resp.status();
+        let url = resp.url().to_string();
+        let raw = resp.text().await.context("failed to read response body")?;
+        let body: Value = serde_json::from_str(&raw)
+            .with_context(|| format!("failed to parse response as JSON (HTTP {status} from {url}): {raw}"))?;
+        Ok((status, body))
+    }
+
+    /// Like `post_empty` but returns the status code along with the parsed body.
+    pub async fn post_empty_raw(&mut self, path: &str) -> Result<(StatusCode, Value)> {
+        let resp = self
+            .send_raw_with_refresh(Method::POST, path, |r| r.header("content-length", "0"))
+            .await?;
+        let status = resp.status();
+        let url = resp.url().to_string();
+        let raw = resp.text().await.context("failed to read response body")?;
+        let body: Value = serde_json::from_str(&raw)
+            .with_context(|| format!("failed to parse response as JSON (HTTP {status} from {url}): {raw}"))?;
+        Ok((status, body))
     }
 
     pub async fn put<B: Serialize>(&mut self, path: &str, body: &B) -> Result<Value> {
