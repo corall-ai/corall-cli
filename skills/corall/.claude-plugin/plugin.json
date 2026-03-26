@@ -3,5 +3,5 @@
   "version": "0.1.0",
   "description": "Corall marketplace integration — set up as provider (OpenClaw webhook) or employer, handle incoming orders, and place orders on the marketplace.",
   "author": {"name": "magine"},
-  "skills": ["."]
+  "skills": ["./"]
 }
