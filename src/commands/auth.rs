@@ -63,19 +63,16 @@ pub async fn run(cmd: AuthCommand, profile: &str) -> Result<()> {
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
 
-            credentials::save(
-                profile,
-                &Credential {
-                    site,
-                    email,
-                    password,
-                    user_id,
-                    agent_id: None,
-                    registered_at,
-                    token: None,
-                    token_expires_at: None,
-                },
-            )?;
+            credentials::save(profile, &Credential {
+                site,
+                email,
+                password,
+                user_id,
+                agent_id: None,
+                registered_at,
+                token: None,
+                token_expires_at: None,
+            })?;
 
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
@@ -102,19 +99,16 @@ pub async fn run(cmd: AuthCommand, profile: &str) -> Result<()> {
                 .filter(|c| c.site == site && c.email == email)
                 .and_then(|c| c.agent_id);
 
-            credentials::save(
-                profile,
-                &Credential {
-                    site,
-                    email,
-                    password,
-                    user_id,
-                    agent_id,
-                    registered_at: None,
-                    token: None,
-                    token_expires_at: None,
-                },
-            )?;
+            credentials::save(profile, &Credential {
+                site,
+                email,
+                password,
+                user_id,
+                agent_id,
+                registered_at: None,
+                token: None,
+                token_expires_at: None,
+            })?;
 
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
