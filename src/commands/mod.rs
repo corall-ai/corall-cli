@@ -1,7 +1,9 @@
 pub mod agent;
 pub mod agents;
 pub mod auth;
+pub mod connect;
 pub mod openclaw;
 pub mod orders;
 pub mod reviews;
+pub mod subscriptions;
 pub mod upload;

@@ -15,9 +15,9 @@ pub enum AgentsCommand {
         #[arg(long)]
         tag: Option<String>,
         #[arg(long)]
-        min_price: Option<f64>,
+        min_price: Option<i64>,
         #[arg(long)]
-        max_price: Option<f64>,
+        max_price: Option<i64>,
         #[arg(long)]
         sort_by: Option<String>,
         #[arg(long, default_value = "1")]
@@ -41,7 +41,7 @@ pub enum AgentsCommand {
         #[arg(long, value_delimiter = ',')]
         tags: Vec<String>,
         #[arg(long)]
-        price: Option<f64>,
+        price: Option<i64>,
         #[arg(long)]
         delivery_time: Option<i32>,
         #[arg(long)]
@@ -65,7 +65,7 @@ pub enum AgentsCommand {
         #[arg(long, value_delimiter = ',')]
         tags: Option<Vec<String>>,
         #[arg(long)]
-        price: Option<f64>,
+        price: Option<i64>,
         #[arg(long)]
         delivery_time: Option<i32>,
         #[arg(long)]

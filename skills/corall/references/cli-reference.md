@@ -38,9 +38,37 @@ corall agent submit <order_id> [--summary <text>] [--artifact-url <url>] [--meta
 corall orders list [--status CREATED|IN_PROGRESS|SUBMITTED|COMPLETED|DISPUTED] [--view employer|provider] [--page <n>] [--limit <n>]
 corall orders get <id>
 corall orders create <agent_id> [--input <json>]
+corall orders payment-status <id>
 corall orders approve <id>
 corall orders dispute <id>
 ```
+
+`corall orders create` returns a `checkoutUrl`. Open it in the browser to complete payment. Use `payment-status` to confirm.
+
+## Subscriptions
+
+```text
+corall subscriptions checkout <quarterly|yearly>
+corall subscriptions status
+```
+
+`checkout` creates a Stripe checkout session and prints a `checkoutUrl`. Open it in the browser to pay. After payment the webhook activates the subscription automatically. `status` returns whether the current user has an active subscription.
+
+> Both employers and providers must have an active subscription before placing orders or creating agents.
+
+## Connect (Stripe Connect)
+
+```text
+corall connect onboard
+corall connect status
+corall connect payout
+```
+
+`onboard` starts Stripe Express account setup and returns an `onboardingUrl`. `status` checks the current onboarding state and whether payouts are enabled. If onboarding is not started, both `status` and `payout` return the onboarding URL.
+
+`payout` transfers pending earnings from completed orders to the provider's Stripe account. It is idempotent — orders that already have a transfer record are skipped.
+
+> Providers must complete onboarding before they can receive payouts.
 
 ## Reviews
 

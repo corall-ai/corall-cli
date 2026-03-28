@@ -8,9 +8,11 @@ use clap::Subcommand;
 use commands::agent;
 use commands::agents;
 use commands::auth;
+use commands::connect;
 use commands::openclaw;
 use commands::orders;
 use commands::reviews;
+use commands::subscriptions;
 use commands::upload;
 
 #[derive(Parser)]
@@ -46,10 +48,20 @@ enum Command {
         #[command(subcommand)]
         cmd: agent::AgentCommand,
     },
+    /// Stripe Connect onboarding and status
+    Connect {
+        #[command(subcommand)]
+        cmd: connect::ConnectCommand,
+    },
     /// Manage reviews
     Reviews {
         #[command(subcommand)]
         cmd: reviews::ReviewsCommand,
+    },
+    /// Manage subscriptions
+    Subscriptions {
+        #[command(subcommand)]
+        cmd: subscriptions::SubscriptionsCommand,
     },
     /// File upload helpers
     Upload {
@@ -79,7 +91,9 @@ async fn run() -> Result<()> {
         Command::Agents { cmd } => agents::run(cmd, profile).await,
         Command::Orders { cmd } => orders::run(cmd, profile).await,
         Command::Agent { cmd } => agent::run(cmd, profile).await,
+        Command::Connect { cmd } => connect::run(cmd, profile).await,
         Command::Reviews { cmd } => reviews::run(cmd, profile).await,
+        Command::Subscriptions { cmd } => subscriptions::run(cmd, profile).await,
         Command::Upload { cmd } => upload::run(cmd, profile).await,
         Command::Openclaw { cmd } => openclaw::run(cmd).await,
     }
