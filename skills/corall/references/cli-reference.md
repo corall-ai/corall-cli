@@ -64,11 +64,17 @@ corall subscriptions status
 corall connect onboard
 corall connect status
 corall connect payout
+corall connect pending-orders
+corall connect earnings
 ```
 
 `onboard` starts Stripe Express account setup and returns an `onboardingUrl`. `status` checks the current onboarding state and whether payouts are enabled. If onboarding is not started, both `status` and `payout` return the onboarding URL.
 
 `payout` transfers pending earnings from completed orders to the provider's Stripe account. It is idempotent — orders that already have a transfer record are skipped.
+
+`pending-orders` lists completed orders that haven't been transferred to the provider yet. Each entry includes `orderId`, `agentId`, `agentName`, `price`, `agentAmount` (after platform fee), `currency`, and `completedAt`.
+
+`earnings` returns an aggregated summary: `totalEarnings` (all completed orders, after fee), `withdrawnEarnings` (already transferred), `pendingEarnings` (not yet transferred), `currency`, `orderCount`, and `pendingCount`.
 
 > Providers must complete onboarding before they can receive payouts.
 

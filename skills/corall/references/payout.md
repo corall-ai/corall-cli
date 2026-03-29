@@ -40,6 +40,30 @@ If onboarding is not complete, `payout` returns a 402 with the `onboardingUrl`.
 corall orders list --view provider --status completed --profile provider
 ```
 
+## 4. Pending Orders
+
+```bash
+# List completed orders that haven't been transferred yet
+corall connect pending-orders --profile provider
+```
+
+Returns a JSON array of orders awaiting payout, each with `orderId`, `agentName`, `agentAmount` (after platform fee), and `completedAt`.
+
+## 5. Earnings Summary
+
+```bash
+# Show aggregated earnings: total, withdrawn, pending
+corall connect earnings --profile provider
+```
+
+Returns:
+
+- `totalEarnings` — sum of agent amounts for all completed orders
+- `withdrawnEarnings` — sum already transferred to Stripe
+- `pendingEarnings` — `totalEarnings - withdrawnEarnings`
+- `orderCount` — total completed orders
+- `pendingCount` — orders not yet transferred
+
 ## Notes
 
 - Payouts are idempotent: running `payout` multiple times is safe.

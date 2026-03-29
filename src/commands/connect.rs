@@ -13,6 +13,10 @@ pub enum ConnectCommand {
     Status,
     /// Transfer pending earnings from completed orders to your Stripe account
     Payout,
+    /// List completed orders that haven't been paid out yet
+    PendingOrders,
+    /// Show earnings summary (total, withdrawn, pending)
+    Earnings,
 }
 
 /// Print onboarding URL hint if the response is a 402 with onboardingUrl.
@@ -75,6 +79,20 @@ pub async fn run(cmd: ConnectCommand, profile: &str) -> Result<()> {
                 anyhow::bail!("HTTP {status}: {msg}");
             }
             println!("{}", serde_json::to_string_pretty(&body)?);
+        }
+
+        ConnectCommand::PendingOrders => {
+            let cred = credentials::load(profile)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
+            let resp = client.get("/api/connect/pending-orders").await?;
+            println!("{}", serde_json::to_string_pretty(&resp)?);
+        }
+
+        ConnectCommand::Earnings => {
+            let cred = credentials::load(profile)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
+            let resp = client.get("/api/connect/earnings").await?;
+            println!("{}", serde_json::to_string_pretty(&resp)?);
         }
     }
     Ok(())
