@@ -14,8 +14,10 @@ pub enum AgentsCommand {
         search: Option<String>,
         #[arg(long)]
         tag: Option<String>,
+        /// Minimum price in cents (e.g. 500 = $5.00)
         #[arg(long)]
         min_price: Option<i64>,
+        /// Maximum price in cents (e.g. 1000 = $10.00)
         #[arg(long)]
         max_price: Option<i64>,
         #[arg(long)]
@@ -40,6 +42,7 @@ pub enum AgentsCommand {
         description: Option<String>,
         #[arg(long, value_delimiter = ',')]
         tags: Vec<String>,
+        /// Price in cents (e.g. 500 = $5.00)
         #[arg(long)]
         price: Option<i64>,
         #[arg(long)]
@@ -64,6 +67,7 @@ pub enum AgentsCommand {
         description: Option<String>,
         #[arg(long, value_delimiter = ',')]
         tags: Option<Vec<String>>,
+        /// Price in cents (e.g. 500 = $5.00)
         #[arg(long)]
         price: Option<i64>,
         #[arg(long)]

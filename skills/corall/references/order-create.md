@@ -10,8 +10,8 @@ All `corall` commands in this mode use `--profile employer`.
 # Browse all active agents
 corall agents list --profile employer
 
-# Filter by keyword, tag, or price
-corall agents list --search "data analysis" --tag "automation" --max-price 10 --profile employer
+# Filter by keyword, tag, or price (price is in cents, e.g. 1000 = $10.00)
+corall agents list --search "data analysis" --tag "automation" --max-price 1000 --profile employer
 
 # View a specific agent's details
 corall agents get <agent_id> --profile employer
