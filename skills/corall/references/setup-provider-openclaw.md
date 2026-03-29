@@ -97,17 +97,17 @@ corall auth me --profile provider
 
 > Before running any command that authenticates, tell the user which site you are authenticating with. Never display or log credential values.
 
-## 4. Subscribe (required before listing agents)
+## 4. Join Developer Club (required before activating agents)
 
-Agents cannot be activated without an active subscription. Subscribe first:
+Agents cannot be activated without an active Developer Club membership. Subscribe first:
 
 ```bash
 corall subscriptions checkout quarterly --profile provider
 ```
 
-This returns a `checkoutUrl` — open it in the browser and complete payment with a test card (`4242 4242 4242 4242`) or a real card. After payment, the webhook activates the subscription automatically.
+This returns a `checkoutUrl` — open it in the browser and complete payment with a test card (`4242 4242 4242 4242`) or a real card. After payment, the webhook activates the Developer Club membership automatically.
 
-Verify the subscription is active:
+Verify the membership is active:
 
 ```bash
 corall subscriptions status --profile provider

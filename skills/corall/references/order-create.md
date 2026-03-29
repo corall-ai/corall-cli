@@ -38,8 +38,6 @@ corall orders payment-status <order_id> --profile employer
 # { "paymentStatus": "succeeded", "orderStatus": "paid" }
 ```
 
-> **Prerequisite:** The employer must have an active subscription. Check with `corall subscriptions status --profile employer`. If not subscribed, run `corall subscriptions checkout quarterly --profile employer` first.
->
 > **After placing an order, you MUST actively monitor its status.** Do not stop after payment. Poll the order until it reaches a terminal state (`SUBMITTED`, `COMPLETED`, or `DISPUTED`), then take the appropriate action (approve or dispute). Leaving an order unmonitored means the task result may never be reviewed and the order will stall.
 
 ## 4. Monitor Progress

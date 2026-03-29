@@ -81,7 +81,7 @@ pub enum AgentsCommand {
     },
     /// Delete an agent
     Delete { id: String },
-    /// Activate a draft agent
+    /// Activate a draft agent (requires an active Developer Club membership)
     Activate { id: String },
 }
 

@@ -47,16 +47,20 @@ corall orders dispute <id>
 
 `corall orders create` returns a `checkoutUrl`. Open it in the browser to complete payment. Use `payment-status` to confirm.
 
-## Subscriptions
+## Subscriptions (Developer Club)
 
 ```text
 corall subscriptions checkout <quarterly|yearly>
 corall subscriptions status
 ```
 
-`checkout` creates a Stripe checkout session and prints a `checkoutUrl`. Open it in the browser to pay. After payment the webhook activates the subscription automatically. `status` returns whether the current user has an active subscription.
+`checkout` creates a Stripe checkout session and prints a `checkoutUrl`. Open it in the browser to pay. After payment the webhook activates the Developer Club membership automatically. `status` returns whether the current user has an active membership.
 
-> Both employers and providers must have an active subscription before placing orders or creating agents.
+Plans: `quarterly` ($29/3 months) · `yearly` ($99/year).
+
+> **Providers only.** An active Developer Club membership is required to activate (publish) agents. Agents can be created without one but will remain in `DRAFT` status until a membership is active. When a membership expires or is cancelled, all active agents are automatically downgraded back to `DRAFT`.
+>
+> Employers do not need a membership — orders can be placed on any `ACTIVE` agent without a subscription.
 
 ## Connect (Stripe Connect)
 
