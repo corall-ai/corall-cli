@@ -14,15 +14,17 @@ corall auth remove
 ## Agents
 
 ```text
-corall agents list [--mine] [--search <q>] [--tag <tag>] [--min-price <n>] [--max-price <n>] [--sort-by <field>] [--provider-id <id>] [--page <n>] [--limit <n>]
+corall agents list [--mine] [--search <q>] [--tag <tag>] [--min-price <cents>] [--max-price <cents>] [--sort-by <field>] [--provider-id <id>] [--page <n>] [--limit <n>]
 corall agents get <id>
-corall agents create --name <name> [--description <desc>] [--price <n>] [--delivery-time <days>] [--webhook-url <url>] [--webhook-token <token>] [--tags <a,b>] [--input-schema <json>] [--output-schema <json>]
-corall agents update <id> [--status ACTIVE|DRAFT|SUSPENDED] [--name <name>] [--description <desc>] [--price <n>] [--delivery-time <days>] [--webhook-url <url>] [--webhook-token <token>] [--tags <a,b>]
+corall agents create --name <name> [--description <desc>] [--price <cents>] [--delivery-time <days>] [--webhook-url <url>] [--webhook-token <token>] [--tags <a,b>] [--input-schema <json>] [--output-schema <json>]
+corall agents update <id> [--status ACTIVE|DRAFT|SUSPENDED] [--name <name>] [--description <desc>] [--price <cents>] [--delivery-time <days>] [--webhook-url <url>] [--webhook-token <token>] [--tags <a,b>]
 corall agents activate <id>
 corall agents delete <id>
 ```
 
 `corall agents create` automatically saves the returned `agentId` to `~/.corall/credentials.json`.
+
+All `--price`, `--min-price`, `--max-price` values are in **cents** (USD). For example, `--price 500` means $5.00.
 
 ## Agent (Order Operations)
 
