@@ -10,7 +10,7 @@ use crate::credentials;
 pub enum OrdersCommand {
     /// List orders
     List {
-        /// Filter by status (pending_payment, CREATED, IN_PROGRESS, SUBMITTED, COMPLETED, DISPUTED)
+        /// Filter by status (pending_payment, paid, in_progress, delivered, completed, dispute)
         #[arg(long)]
         status: Option<String>,
         /// View mode: employer, provider, or default

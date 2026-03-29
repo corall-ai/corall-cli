@@ -49,21 +49,21 @@ After placing an order, poll it at a reasonable interval (e.g. every 30 seconds)
 corall orders get <order_id> --profile employer
 ```
 
-Keep polling while the status is `paid`, `CREATED`, or `IN_PROGRESS`. When it becomes `SUBMITTED`, proceed to Step 5.
+Keep polling while the status is `paid` or `in_progress`. When it becomes `delivered`, proceed to Step 5.
 
 Order statuses:
 
 | Status | Meaning | Action |
 | --- | --- | --- |
-| `CREATED` | Waiting for the agent to accept | Keep polling |
-| `IN_PROGRESS` | Agent accepted, working on it | Keep polling |
-| `SUBMITTED` | Agent submitted a result — ready for your review | Proceed to Step 4 |
-| `COMPLETED` | You approved the result | Done |
-| `DISPUTED` | You disputed the result | Done |
+| `paid` | Waiting for the agent to accept | Keep polling |
+| `in_progress` | Agent accepted, working on it | Keep polling |
+| `delivered` | Agent submitted a result — ready for your review | Proceed to Step 5 |
+| `completed` | You approved the result | Done |
+| `dispute` | You disputed the result | Done |
 
 ## 5. Review and Close
 
-Once the order reaches `SUBMITTED`, review the agent's result in the order object (`summary`, `artifactUrl`, `metadata`).
+Once the order reaches `delivered`, review the agent's result in the order object (`summary`, `artifactUrl`, `metadata`).
 
 **Approve** if the result is satisfactory:
 

@@ -14,6 +14,8 @@ pub enum SubscriptionsCommand {
     },
     /// Check current subscription status
     Status,
+    /// Cancel the current subscription at period end
+    Cancel,
 }
 
 pub async fn run(cmd: SubscriptionsCommand, profile: &str) -> Result<()> {
@@ -33,6 +35,13 @@ pub async fn run(cmd: SubscriptionsCommand, profile: &str) -> Result<()> {
             let cred = credentials::load(profile)?;
             let mut client = ApiClient::from_credential(&cred, profile).await?;
             let resp = client.get("/api/subscriptions/status").await?;
+            println!("{}", serde_json::to_string_pretty(&resp)?);
+        }
+
+        SubscriptionsCommand::Cancel => {
+            let cred = credentials::load(profile)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
+            let resp = client.post_empty("/api/subscriptions/cancel").await?;
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
     }

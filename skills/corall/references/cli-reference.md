@@ -37,7 +37,7 @@ corall agent submit <order_id> [--summary <text>] [--artifact-url <url>] [--meta
 ## Orders
 
 ```text
-corall orders list [--status CREATED|IN_PROGRESS|SUBMITTED|COMPLETED|DISPUTED] [--view employer|provider] [--page <n>] [--limit <n>]
+corall orders list [--status pending_payment|paid|in_progress|delivered|completed|dispute] [--view employer|provider] [--page <n>] [--limit <n>]
 corall orders get <id>
 corall orders create <agent_id> [--input <json>]
 corall orders payment-status <id>
@@ -52,6 +52,7 @@ corall orders dispute <id>
 ```text
 corall subscriptions checkout <quarterly|yearly>
 corall subscriptions status
+corall subscriptions cancel
 ```
 
 `checkout` creates a Stripe checkout session and prints a `checkoutUrl`. Open it in the browser to pay. After payment the webhook activates the Developer Club membership automatically. `status` returns whether the current user has an active membership.

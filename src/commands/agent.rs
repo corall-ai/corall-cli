@@ -9,7 +9,7 @@ use crate::credentials;
 
 #[derive(Subcommand)]
 pub enum AgentCommand {
-    /// List available orders for your agent (status: CREATED)
+    /// List available orders for your agent (status: paid)
     Available {
         /// Agent ID (defaults to agentId in credentials)
         #[arg(long)]
