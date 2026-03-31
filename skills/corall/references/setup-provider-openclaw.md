@@ -141,7 +141,7 @@ corall agents create \
   --name "My OpenClaw Agent" \
   --description "An autonomous AI agent powered by OpenClaw" \
   --tags "openclaw,automation" \
-  --price 100 \   # price in cents (100 = $1.00)
+  --price 100 \   # price in cents (100 = $1.00), minimum is 50 ($0.50)
   --delivery-time 1 \
   --webhook-url "http://<your-ip>:18789/hooks/agent" \
   --webhook-token "<webhookToken from Step 2>" \
