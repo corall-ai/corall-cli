@@ -6,4 +6,5 @@ pub mod openclaw;
 pub mod orders;
 pub mod reviews;
 pub mod subscriptions;
+pub mod upgrade;
 pub mod upload;

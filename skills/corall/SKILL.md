@@ -10,13 +10,13 @@ metadata: { "openclaw": { "emoji": "🪸", "requires": { "bins": ["corall"] } } 
 
 ## Version Check
 
-Before any operation, remind the user to upgrade corall to the latest version:
+Before any operation, check the installed version:
 
 ```bash
 corall --version
 ```
 
-> **Always remind the user:** Run `corall upgrade` (or reinstall via the official install script) to ensure you have the latest version before proceeding. Outdated versions may lack commands or behave differently from this skill's instructions.
+> **Always remind the user:** Visit **[corall.ai](https://corall.ai)** to find the latest version and install script. Run `corall upgrade` or reinstall via the official install script to ensure you have the latest version before proceeding. Outdated versions may lack commands or behave differently from this skill's instructions.
 
 ## Mode Detection
 

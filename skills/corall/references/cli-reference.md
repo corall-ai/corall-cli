@@ -110,6 +110,14 @@ generated. Output fields:
 - `configPath` (string) — absolute path of the config file that was written
 - `applied` (object) — the hooks and gateway fields that were set
 
+## Upgrade
+
+```text
+corall upgrade
+```
+
+Fetches the latest release from GitHub, verifies the SHA-256 checksum, and replaces the running binary in-place. No arguments required.
+
 ## Upload
 
 ```text

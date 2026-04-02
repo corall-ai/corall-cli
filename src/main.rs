@@ -13,6 +13,7 @@ use commands::openclaw;
 use commands::orders;
 use commands::reviews;
 use commands::subscriptions;
+use commands::upgrade;
 use commands::upload;
 
 #[derive(Parser)]
@@ -63,6 +64,8 @@ enum Command {
         #[command(subcommand)]
         cmd: subscriptions::SubscriptionsCommand,
     },
+    /// Upgrade corall to the latest release
+    Upgrade,
     /// File upload helpers
     Upload {
         #[command(subcommand)]
@@ -94,6 +97,7 @@ async fn run() -> Result<()> {
         Command::Connect { cmd } => connect::run(cmd, profile).await,
         Command::Reviews { cmd } => reviews::run(cmd, profile).await,
         Command::Subscriptions { cmd } => subscriptions::run(cmd, profile).await,
+        Command::Upgrade => upgrade::run().await,
         Command::Upload { cmd } => upload::run(cmd, profile).await,
         Command::Openclaw { cmd } => openclaw::run(cmd).await,
     }
