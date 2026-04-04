@@ -80,6 +80,9 @@ enum Command {
 
 #[tokio::main]
 async fn main() {
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install ring crypto provider");
     if let Err(e) = run().await {
         eprintln!("{}", serde_json::json!({ "error": e.to_string() }));
         std::process::exit(1);
