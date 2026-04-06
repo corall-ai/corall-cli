@@ -75,9 +75,9 @@ pub async fn run(cmd: OrdersCommand, profile: &str) -> Result<()> {
                 body["inputPayload"] = serde_json::from_str::<Value>(&s)?;
             }
             let resp = client.post("/api/orders", &body).await?;
-            // Print the full response; checkoutUrl must be opened in a browser to complete payment
-            if let Some(url) = resp.get("checkoutUrl").and_then(|v| v.as_str()) {
-                eprintln!("Open this URL in your browser to complete payment:\n  {url}");
+            if let Some(order_id) = resp["order"]["id"].as_str() {
+                let pay_url = format!("{}/pay/{order_id}", client.base_url());
+                eprintln!("Open this URL in your browser to complete payment:\n  {pay_url}");
             }
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
@@ -85,11 +85,13 @@ pub async fn run(cmd: OrdersCommand, profile: &str) -> Result<()> {
         OrdersCommand::PaymentStatus { id } => {
             let cred = credentials::load(profile)?;
             let mut client = ApiClient::from_credential(&cred, profile).await?;
+            let base_url = client.base_url().to_string();
             let resp = client
                 .get(&format!("/api/orders/{id}/payment-status"))
                 .await?;
-            if let Some(url) = resp.get("checkoutUrl").and_then(|v| v.as_str()) {
-                eprintln!("Payment pending. Complete payment at:\n  {url}");
+            if resp.get("status").and_then(|v| v.as_str()) == Some("pending") {
+                let pay_url = format!("{base_url}/pay/{id}");
+                eprintln!("Payment pending. Complete payment at:\n  {pay_url}");
             }
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }

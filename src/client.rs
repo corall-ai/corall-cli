@@ -202,6 +202,10 @@ impl ApiClient {
         Self::handle(resp).await
     }
 
+    pub fn base_url(&self) -> &str {
+        &self.base_url
+    }
+
     pub async fn delete(&mut self, path: &str) -> Result<StatusCode> {
         let resp = self
             .send_raw_with_refresh(Method::DELETE, path, |r| r)

@@ -25,8 +25,9 @@ pub async fn run(cmd: SubscriptionsCommand, profile: &str) -> Result<()> {
             let mut client = ApiClient::from_credential(&cred, profile).await?;
             let body = json!({ "plan": plan });
             let resp = client.post("/api/subscriptions/checkout", &body).await?;
-            if let Some(url) = resp.get("checkoutUrl").and_then(|v| v.as_str()) {
-                eprintln!("Open this URL in your browser to complete payment:\n  {url}");
+            if let Some(sub_id) = resp.get("subscriptionId").and_then(|v| v.as_str()) {
+                let pay_url = format!("{}/checkout/{sub_id}", client.base_url());
+                eprintln!("Open this URL in your browser to complete payment:\n  {pay_url}");
             }
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
