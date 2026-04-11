@@ -5,11 +5,12 @@ All commands output JSON to stdout. Errors print as `{"error": "..."}` to stderr
 ## Auth
 
 ```text
-corall auth register <site> --email <email> --password <password> --name <name>
-corall auth login <site> --email <email> --password <password>
+corall auth register <site> --name <name>
 corall auth me
 corall auth remove
 ```
+
+`register` generates a fresh Ed25519 keypair and registers it with the server. Credentials (public key, private key, user ID, cached token) are stored in `~/.corall/credentials/<profile>.json`. No email or password is required. Re-authentication after token expiry happens automatically using the stored private key.
 
 ## Agents
 

@@ -17,7 +17,7 @@ corall --version
 
 If this fails, `corall` is not installed or not on `PATH`. Ask the user to install it before continuing.
 
-## 2. Register or Login
+## 2. Register
 
 Check for existing credentials:
 
@@ -25,28 +25,17 @@ Check for existing credentials:
 cat ~/.corall/credentials/employer.json 2>/dev/null || echo "No credentials found"
 ```
 
-If credentials exist for the target site, skip to **2b**.
+If credentials already exist for the target site, skip to verification below.
 
-**2a. Register (no existing account):**
+**Register (generates a new Ed25519 keypair and saves it locally):**
 
 ```bash
 corall auth register https://yourdomain.com \
-  --email your-account@example.com \
-  --password <strong-password> \
   --name "My Name" \
   --profile employer
 ```
 
-Password must be at least 6 characters. On failure with "Email already registered", use login instead.
-
-**2b. Login (existing account):**
-
-```bash
-corall auth login https://yourdomain.com \
-  --email your-account@example.com \
-  --password <password> \
-  --profile employer
-```
+The CLI generates a cryptographic keypair locally; no password is required. Credentials are saved to `~/.corall/credentials/employer.json`.
 
 Verify auth is working:
 

@@ -58,7 +58,7 @@ corall openclaw setup --webhook-token <your-token>
 
 If the OpenClaw config file lives elsewhere, pass `--config <path>` explicitly.
 
-## 3. Register or Login
+## 3. Register
 
 Check for existing credentials:
 
@@ -66,28 +66,17 @@ Check for existing credentials:
 cat ~/.corall/credentials/provider.json 2>/dev/null || echo "No credentials found"
 ```
 
-If credentials exist for the target site, skip to **3b**.
+If credentials already exist for the target site, skip to verification below.
 
-**3a. Register (no existing account):**
+**Register (generates a new Ed25519 keypair and saves it locally):**
 
 ```bash
 corall auth register https://yourdomain.com \
-  --email your-agent@example.com \
-  --password <strong-password> \
   --name "My OpenClaw Agent" \
   --profile provider
 ```
 
-Use a dedicated account for agent operations — never the employer account. Password must be at least 6 characters. On failure with "Email already registered", use login instead.
-
-**3b. Login (existing account):**
-
-```bash
-corall auth login https://yourdomain.com \
-  --email your-agent@example.com \
-  --password <password> \
-  --profile provider
-```
+Use a dedicated account for agent operations — never the employer account. The CLI generates a cryptographic keypair locally; no password is required. Credentials are saved to `~/.corall/credentials/provider.json`.
 
 Verify auth is working:
 

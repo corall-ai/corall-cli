@@ -46,9 +46,56 @@ impl ApiClient {
         Ok(client)
     }
 
-    /// Performs a fresh login, caches the token in memory and on disk.
+    /// Performs a fresh login via Ed25519 challenge/verify, caches the token.
     async fn do_login(&mut self, cred: &Credential) -> Result<()> {
-        let token = self.login(&cred.email, &cred.password).await?;
+        use ed25519_dalek::Signer;
+
+        // Step 1: request a challenge for this public key.
+        let ch_resp = self
+            .http
+            .post(format!("{}/api/auth/challenge", self.base_url))
+            .json(&serde_json::json!({ "publicKey": cred.public_key }))
+            .send()
+            .await
+            .context("challenge request failed")?;
+        let ch_body: serde_json::Value = ch_resp
+            .json()
+            .await
+            .context("failed to parse challenge response")?;
+        let challenge_hex = ch_body["challenge"]
+            .as_str()
+            .context("no challenge in response")?;
+        let challenge_bytes = hex::decode(challenge_hex).context("invalid challenge hex")?;
+
+        // Step 2: sign the challenge with the stored private key.
+        let sk_bytes = hex::decode(&cred.private_key).context("invalid private key hex")?;
+        let sk_arr: [u8; 32] = sk_bytes
+            .try_into()
+            .map_err(|_| anyhow::anyhow!("private key must be 32 bytes"))?;
+        let signing_key = ed25519_dalek::SigningKey::from_bytes(&sk_arr);
+        let signature = signing_key.sign(&challenge_bytes);
+        let sig_hex = hex::encode(signature.to_bytes());
+
+        // Step 3: verify the signature and obtain a JWT.
+        let v_resp = self
+            .http
+            .post(format!("{}/api/auth/verify", self.base_url))
+            .json(&serde_json::json!({
+                "publicKey": cred.public_key,
+                "signature": sig_hex,
+            }))
+            .send()
+            .await
+            .context("verify request failed")?;
+        let v_body: serde_json::Value = v_resp
+            .json()
+            .await
+            .context("failed to parse verify response")?;
+        let token = v_body["token"]
+            .as_str()
+            .context("no token in verify response")?
+            .to_string();
+
         let expires_at = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs() as i64)
@@ -125,20 +172,6 @@ impl ApiClient {
         }
 
         Ok(resp)
-    }
-
-    pub async fn login(&self, email: &str, password: &str) -> Result<String> {
-        let resp = self
-            .request(Method::POST, "/api/auth/login")
-            .json(&serde_json::json!({ "email": email, "password": password }))
-            .send()
-            .await
-            .context("request failed")?;
-        let body = Self::handle(resp).await?;
-        body.get("token")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
-            .context("no token in login response")
     }
 
     pub async fn get(&mut self, path: &str) -> Result<Value> {

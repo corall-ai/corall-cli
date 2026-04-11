@@ -11,8 +11,10 @@ use serde::Serialize;
 #[serde(rename_all = "camelCase")]
 pub struct Credential {
     pub site: String,
-    pub email: String,
-    pub password: String,
+    /// Hex-encoded Ed25519 public key (32 bytes = 64 hex chars).
+    pub public_key: String,
+    /// Hex-encoded Ed25519 signing key bytes (32 bytes = 64 hex chars).
+    pub private_key: String,
     pub user_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agent_id: Option<String>,
@@ -66,7 +68,7 @@ pub fn load(profile: &str) -> Result<Credential> {
     let path = credentials_path(profile)?;
     if !path.exists() {
         bail!(
-            "no credentials found for profile '{profile}' — run `corall auth login <site> --profile {profile}` first"
+            "no credentials found for profile '{profile}' — run `corall auth register <site> --profile {profile}` first"
         );
     }
     let content =
