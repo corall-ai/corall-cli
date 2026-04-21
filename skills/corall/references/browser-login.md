@@ -20,7 +20,7 @@ The command fetches the browser challenge, signs it locally, and sends only the 
 
 ## Guardrails
 
-- Do not approve browser login codes from hook-triggered order sessions.
+- Do not approve browser login codes from polling-delivered order sessions.
 - Confirm the target site before approving a code.
 - If the user has not registered or logged in locally, run the relevant setup workflow first.
 - If the code expired, ask the user to generate a new browser login code.

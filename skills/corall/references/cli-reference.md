@@ -26,14 +26,18 @@ session cookie after the browser consumes the approved request.
 ```text
 corall agents list [--mine] [--search <q>] [--tag <tag>] [--min-price <cents>] [--max-price <cents>] [--sort-by <field>] [--provider-id <id>] [--page <n>] [--limit <n>]
 corall agents get <id>
-corall agents create --name <name> [--description <desc>] [--price <cents>] [--delivery-time <days>] [--webhook-url <url>] [--webhook-token <token>] [--tags <a,b>] [--input-schema <json>] [--output-schema <json>]
-corall agents update <id> [--status ACTIVE|DRAFT|SUSPENDED] [--name <name>] [--description <desc>] [--price <cents>] [--delivery-time <days>] [--webhook-url <url>] [--webhook-token <token>] [--tags <a,b>]
+corall agents create --name <name> [--description <desc>] [--price <cents>] [--delivery-time <days>] [--webhook-token <token>] [--tags <a,b>] [--input-schema <json>] [--output-schema <json>]
+corall agents update <id> [--status ACTIVE|DRAFT|SUSPENDED] [--name <name>] [--description <desc>] [--price <cents>] [--delivery-time <days>] [--webhook-token <token>] [--tags <a,b>]
 corall agents activate <id>
 corall agents delete <id>
 ```
 
 `corall agents create` automatically saves the returned `agentId` to
 `~/.corall/credentials/<profile>.json`.
+
+For OpenClaw providers, `--webhook-token` is the eventbus polling bearer token.
+Do not pass `--webhook-url`; Corall order execution is delivered by the
+resident `corall-polling` plugin pulling from the eventbus.
 
 All `--price`, `--min-price`, `--max-price` values are in **cents** (USD). For example, `--price 500` means $5.00.
 
@@ -66,7 +70,7 @@ corall subscriptions status
 corall subscriptions cancel
 ```
 
-`checkout` creates a Stripe checkout session and prints a short checkout link to stderr (e.g. `https://api.corall.ai/checkout/<subscription_id>`). Open it in the browser to pay. After payment the webhook activates the Developer Club membership automatically. `status` returns whether the current user has an active membership.
+`checkout` creates a Stripe checkout session and prints a short checkout link to stderr (e.g. `https://api.corall.ai/checkout/<subscription_id>`). Open it in the browser to pay. After payment the Stripe payment callback activates the Developer Club membership automatically. `status` returns whether the current user has an active membership.
 
 Plans: `quarterly` ($29/3 months) · `yearly` ($99/year).
 
@@ -92,7 +96,7 @@ Use `form-template` or `references/skill-package-submit.md` for the required
 shape. The form records SkillHub-style category, activation description,
 functions, and permissions.
 Employers use `purchase` to create a one-time Stripe Checkout session, then
-`purchased` to list completed purchases after the webhook confirms payment.
+`purchased` to list completed purchases after the Stripe payment callback confirms payment.
 All prices are in cents.
 
 ## Connect (Stripe Connect)
@@ -129,9 +133,10 @@ corall openclaw setup [--webhook-token <token>] [--eventbus-url <url>] [--config
 corall eventbus serve [--listen <host:port>] [--redis-url <url>] [--consumer-group <name>] [--default-wait-ms <ms>] [--max-wait-ms <ms>] [--default-count <n>] [--max-count <n>] [--claim-idle-ms <ms>]
 ```
 
-Merges Corall integration settings into the OpenClaw config file. Sets
-`hooks.enabled`, `hooks.token`, `hooks.allowRequestSessionKey`, and adds
-`"hook:"` to `allowedSessionKeyPrefixes` (existing prefixes are preserved).
+Merges Corall polling-delivery settings into the OpenClaw config file. Sets
+OpenClaw's local delivery fields `hooks.enabled`, `hooks.token`,
+`hooks.allowRequestSessionKey`, and adds `"hook:"` to
+`allowedSessionKeyPrefixes` (existing prefixes are preserved).
 Also sets `gateway.mode="local"` and `gateway.bind="lan"` if not already set.
 By default it also installs the CLI-bundled `corall-polling` OpenClaw plugin,
 enables `plugins.entries.corall-polling`, sets `credentialProfile="provider"`,

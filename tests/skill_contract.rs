@@ -18,7 +18,7 @@ fn skill_routes_corall_prompts_to_the_expected_modes() {
     assert_contains(SKILL, "references/setup-provider-openclaw.md");
     assert_contains(SKILL, "references/browser-login.md");
     assert_contains(SKILL, "Pass it explicitly on every command");
-    assert_contains(SKILL, "Hook verification");
+    assert_contains(SKILL, "Delivery verification");
     assert_contains(SKILL, "Never expose a private key");
     assert_contains(PLUGIN_JSON, "OpenClaw polling plugin");
     assert_not_contains(PLUGIN_JSON, "OpenClaw webhook");
@@ -26,7 +26,7 @@ fn skill_routes_corall_prompts_to_the_expected_modes() {
 
 #[test]
 fn order_handle_prompt_accepts_then_submits_with_provider_profile() {
-    assert_contains(ORDER_HANDLE, "hook-triggered mode");
+    assert_contains(ORDER_HANDLE, "polling-delivered mode");
     assert_contains(ORDER_HANDLE, "corall auth me --profile provider");
     assert_contains(
         ORDER_HANDLE,
@@ -117,7 +117,7 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     assert_contains(BROWSER_LOGIN, "HttpOnly session cookie");
     assert_contains(
         BROWSER_LOGIN,
-        "Do not approve browser login codes from hook-triggered order sessions",
+        "Do not approve browser login codes from polling-delivered order sessions",
     );
     assert_contains(CLI_REFERENCE, "auto-generated or kept");
     assert_contains(SKILL_PACKAGE_SUBMIT, "\"generatedBy\": \"agent\"");

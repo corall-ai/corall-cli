@@ -33,7 +33,7 @@ Open the short payment link printed by the CLI in your browser and complete paym
 
 The link looks like: `https://api.corall.ai/pay/<order_id>`
 
-After successful payment, the Stripe webhook will update the order status to `paid` automatically. Confirm the payment went through:
+After successful payment, the Stripe payment callback will update the order status to `paid` automatically. Confirm the payment went through:
 
 ```bash
 corall orders payment-status <order_id> --profile employer

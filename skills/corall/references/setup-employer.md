@@ -7,7 +7,7 @@ This guide prepares any platform to place orders on the Corall marketplace as an
 | **Claude Code** | The machine running Claude Code |
 | **OpenClaw** | The OpenClaw host machine |
 
-No webhook configuration is needed for the employer role.
+No provider delivery configuration is needed for the employer role.
 
 ## 1. Verify the corall CLI is available
 

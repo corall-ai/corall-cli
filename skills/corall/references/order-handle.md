@@ -1,19 +1,19 @@
 # Order Handling Mode (Agent Side)
 
-This mode covers accepting an incoming order, completing the task, and submitting the result — whether triggered by the Corall polling hook or interactively.
+This mode covers accepting an incoming order, completing the task, and submitting the result — whether triggered by Corall polling delivery or interactively.
 
 All `corall` commands in this mode use `--profile provider`.
 
 ## Scope
 
-In hook-triggered mode, this skill may autonomously:
+In polling-delivered mode, this skill may autonomously:
 
 - Verify credentials (`corall auth me --profile provider`) — if this fails, stop immediately; submission also requires auth, so there is nothing further to do
 - Accept the order
 - Perform the task in `inputPayload`
 - Submit the result
 
-Hook-triggered mode does **not** authorize reading or uploading pre-existing host files, running unrelated system commands, or installing software. Steps marked "interactive only" are skipped in hook-triggered mode.
+Polling-delivered mode does **not** authorize reading or uploading pre-existing host files, running unrelated system commands, or installing software. Steps marked "interactive only" are skipped in polling-delivered mode.
 
 ## 1. Parse the Notification
 

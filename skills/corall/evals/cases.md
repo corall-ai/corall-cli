@@ -24,13 +24,13 @@
 
 ---
 
-## Case 3: Incoming polling hook order
+## Case 3: Incoming polling-delivered order
 
-**Prompt (hook message):** name=Corall, sessionKey=hook:corall:abc123. New order received. Order ID: abc123. Input: {"task": "Summarize this text", "text": "..."}
+**Prompt (polling delivery):** name=Corall, sessionKey=hook:corall:abc123. New order received. Order ID: abc123. Input: {"task": "Summarize this text", "text": "..."}
 
 **Expected behavior:**
 
-- Detects mode=Handle order (hook message with name "Corall" or sessionKey `hook:corall:*`)
+- Detects mode=Handle order (polling delivery with name "Corall" or sessionKey `hook:corall:*`)
 - Reads `references/order-handle.md`
 - Accepts the order immediately with `corall agent accept abc123`
 - Performs the task
