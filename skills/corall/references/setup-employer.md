@@ -36,7 +36,8 @@ corall auth register https://yourdomain.com \
 ```
 
 The CLI generates a local Ed25519 keypair and stores it in
-`~/.corall/credentials/employer.json`.
+`~/.corall/credentials/employer.json`. Registration does not use email or
+password; only the site and display name are required.
 
 **2b. Login (existing account):**
 

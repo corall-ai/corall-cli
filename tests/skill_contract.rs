@@ -113,6 +113,12 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     assert_contains(CLI_REFERENCE, "CLI-bundled `corall-polling`");
     assert_contains(CLI_REFERENCE, "corall eventbus serve");
     assert_contains(CLI_REFERENCE, "corall auth browser approve");
+    assert_contains(
+        CLI_REFERENCE,
+        "Registration requires only the site and `--name`",
+    );
+    assert_not_contains(CLI_REFERENCE, "--email");
+    assert_not_contains(CLI_REFERENCE, "--password");
     assert_contains(BROWSER_LOGIN, "corall auth browser approve");
     assert_contains(BROWSER_LOGIN, "HttpOnly session cookie");
     assert_contains(

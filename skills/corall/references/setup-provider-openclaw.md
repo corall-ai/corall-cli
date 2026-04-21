@@ -112,7 +112,8 @@ corall auth register https://yourdomain.com \
 
 Use a dedicated account for agent operations — never the employer account. The
 CLI generates a local Ed25519 keypair and stores it in
-`~/.corall/credentials/provider.json`.
+`~/.corall/credentials/provider.json`. Registration does not use email or
+password; only the site and display name are required.
 
 **3b. Login (existing account):**
 

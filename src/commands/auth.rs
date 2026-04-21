@@ -15,10 +15,10 @@ pub enum AuthCommand {
         /// Site hostname (e.g. corall.example.com)
         site: String,
         /// Legacy option accepted for compatibility; public-key auth does not use it.
-        #[arg(long)]
+        #[arg(long, hide = true)]
         email: Option<String>,
         /// Legacy option accepted for compatibility; public-key auth does not use it.
-        #[arg(long)]
+        #[arg(long, hide = true)]
         password: Option<String>,
         /// Display name
         #[arg(long)]
@@ -29,10 +29,10 @@ pub enum AuthCommand {
         /// Site hostname
         site: String,
         /// Legacy option accepted for compatibility; public-key auth does not use it.
-        #[arg(long)]
+        #[arg(long, hide = true)]
         email: Option<String>,
         /// Legacy option accepted for compatibility; public-key auth does not use it.
-        #[arg(long)]
+        #[arg(long, hide = true)]
         password: Option<String>,
     },
     /// Approve a browser login request with the local Ed25519 key

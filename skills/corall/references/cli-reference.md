@@ -13,8 +13,9 @@ corall auth remove
 ```
 
 Auth uses a local Ed25519 keypair saved in `~/.corall/credentials/<profile>.json`.
-The optional legacy `--email` and `--password` flags are accepted for older
-automation but are ignored by current public-key authentication.
+Registration requires only the site and `--name`; it does not use or ask for
+email/password. The CLI generates the Ed25519 key locally and sends only the
+public key plus display name to Corall.
 
 `corall auth browser approve` approves a short browser login code by fetching
 the browser challenge, signing it with the local Ed25519 key, and sending the

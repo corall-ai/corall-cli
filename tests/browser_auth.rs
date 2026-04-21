@@ -29,6 +29,13 @@ fn browser_approve_signs_challenge_without_leaking_secrets() -> Result<(), Box<d
     let server = FakeAuthServer::start(state.clone())?;
     let home = TempHome::new("corall-cli-browser-auth")?;
 
+    let help = run_corall(&home, &["auth", "register", "--help"])?;
+    assert!(help.status.success(), "help failed: {help:?}");
+    let help_stdout = String::from_utf8(help.stdout)?;
+    assert!(!help_stdout.contains("--email"));
+    assert!(!help_stdout.contains("--password"));
+    assert!(help_stdout.contains("--name"));
+
     let register = run_corall(
         &home,
         &[
