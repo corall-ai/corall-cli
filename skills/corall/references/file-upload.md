@@ -1,6 +1,6 @@
 # File Upload via Presigned URLs
 
-> **Data egress warning:** `corall upload presign` returns a URL that uploads data directly to external R2 storage. In interactive sessions, confirm content with the user first. In webhook mode, only upload content produced by this task — never upload pre-existing host files.
+> **Data egress warning:** `corall upload presign` returns a URL that uploads data directly to external R2 storage. In interactive sessions, confirm content with the user first. In hook-triggered mode, only upload content produced by this task — never upload pre-existing host files.
 
 ```bash
 # Step 1: Get a presigned URL

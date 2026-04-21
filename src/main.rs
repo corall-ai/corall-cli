@@ -1,6 +1,7 @@
 mod client;
 mod commands;
 mod credentials;
+mod eventbus;
 
 use anyhow::Result;
 use clap::Parser;
@@ -9,9 +10,11 @@ use commands::agent;
 use commands::agents;
 use commands::auth;
 use commands::connect;
+use commands::eventbus as eventbus_cmd;
 use commands::openclaw;
 use commands::orders;
 use commands::reviews;
+use commands::skill_packages;
 use commands::subscriptions;
 use commands::upgrade;
 use commands::upload;
@@ -59,6 +62,12 @@ enum Command {
         #[command(subcommand)]
         cmd: reviews::ReviewsCommand,
     },
+    /// Manage paid skill packages
+    #[command(name = "skill-packages")]
+    SkillPackages {
+        #[command(subcommand)]
+        cmd: skill_packages::SkillPackagesCommand,
+    },
     /// Manage subscriptions
     Subscriptions {
         #[command(subcommand)]
@@ -66,6 +75,11 @@ enum Command {
     },
     /// Upgrade corall to the latest release
     Upgrade,
+    /// Redis-backed HTTP polling server for agent event delivery
+    Eventbus {
+        #[command(subcommand)]
+        cmd: eventbus_cmd::EventbusCommand,
+    },
     /// File upload helpers
     Upload {
         #[command(subcommand)]
@@ -99,8 +113,10 @@ async fn run() -> Result<()> {
         Command::Agent { cmd } => agent::run(cmd, profile).await,
         Command::Connect { cmd } => connect::run(cmd, profile).await,
         Command::Reviews { cmd } => reviews::run(cmd, profile).await,
+        Command::SkillPackages { cmd } => skill_packages::run(cmd, profile).await,
         Command::Subscriptions { cmd } => subscriptions::run(cmd, profile).await,
         Command::Upgrade => upgrade::run().await,
+        Command::Eventbus { cmd } => eventbus_cmd::run(cmd).await,
         Command::Upload { cmd } => upload::run(cmd, profile).await,
         Command::Openclaw { cmd } => openclaw::run(cmd).await,
     }

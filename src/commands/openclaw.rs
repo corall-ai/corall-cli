@@ -1,6 +1,8 @@
 use std::env;
 use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
+use std::process::Command;
 
 use anyhow::Context;
 use anyhow::Result;
@@ -9,6 +11,68 @@ use clap::Subcommand;
 use rand::Rng;
 use serde_json::Value;
 use serde_json::json;
+
+const POLLING_PLUGIN_ID: &str = "corall-polling";
+
+struct EmbeddedPluginFile {
+    path: &'static str,
+    bytes: &'static [u8],
+}
+
+const EMBEDDED_POLLING_PLUGIN_FILES: &[EmbeddedPluginFile] = &[
+    EmbeddedPluginFile {
+        path: "package.json",
+        bytes: include_bytes!("../../plugins/corall-polling/package.json"),
+    },
+    EmbeddedPluginFile {
+        path: "openclaw.plugin.json",
+        bytes: include_bytes!("../../plugins/corall-polling/openclaw.plugin.json"),
+    },
+    EmbeddedPluginFile {
+        path: "README.md",
+        bytes: include_bytes!("../../plugins/corall-polling/README.md"),
+    },
+    EmbeddedPluginFile {
+        path: "dist/index.js",
+        bytes: include_bytes!("../../plugins/corall-polling/dist/index.js"),
+    },
+    EmbeddedPluginFile {
+        path: "dist/index.d.ts",
+        bytes: include_bytes!("../../plugins/corall-polling/dist/index.d.ts"),
+    },
+    EmbeddedPluginFile {
+        path: "dist/src/config.js",
+        bytes: include_bytes!("../../plugins/corall-polling/dist/src/config.js"),
+    },
+    EmbeddedPluginFile {
+        path: "dist/src/config.d.ts",
+        bytes: include_bytes!("../../plugins/corall-polling/dist/src/config.d.ts"),
+    },
+    EmbeddedPluginFile {
+        path: "dist/src/http.js",
+        bytes: include_bytes!("../../plugins/corall-polling/dist/src/http.js"),
+    },
+    EmbeddedPluginFile {
+        path: "dist/src/http.d.ts",
+        bytes: include_bytes!("../../plugins/corall-polling/dist/src/http.d.ts"),
+    },
+    EmbeddedPluginFile {
+        path: "dist/src/service.js",
+        bytes: include_bytes!("../../plugins/corall-polling/dist/src/service.js"),
+    },
+    EmbeddedPluginFile {
+        path: "dist/src/service.d.ts",
+        bytes: include_bytes!("../../plugins/corall-polling/dist/src/service.d.ts"),
+    },
+    EmbeddedPluginFile {
+        path: "dist/src/types.js",
+        bytes: include_bytes!("../../plugins/corall-polling/dist/src/types.js"),
+    },
+    EmbeddedPluginFile {
+        path: "dist/src/types.d.ts",
+        bytes: include_bytes!("../../plugins/corall-polling/dist/src/types.d.ts"),
+    },
+];
 
 #[derive(Subcommand)]
 pub enum OpenclawCommand {
@@ -37,6 +101,16 @@ pub enum OpenclawCommand {
         /// ~/.openclaw/openclaw.json (with legacy path fallback).
         #[arg(long)]
         config: Option<PathBuf>,
+
+        /// Corall eventbus base URL used by the resident corall-polling plugin.
+        /// Defaults to CORALL_EVENTBUS_URL when set. If omitted, the plugin is
+        /// still installed but waits until baseUrl is configured.
+        #[arg(long)]
+        eventbus_url: Option<String>,
+
+        /// Only update OpenClaw hooks/config; do not install the resident plugin.
+        #[arg(long)]
+        skip_plugin_install: bool,
     },
 }
 
@@ -45,6 +119,8 @@ pub async fn run(cmd: OpenclawCommand) -> Result<()> {
         OpenclawCommand::Setup {
             webhook_token,
             config,
+            eventbus_url,
+            skip_plugin_install,
         } => {
             let config_path = match config {
                 Some(p) => p,
@@ -91,12 +167,31 @@ pub async fn run(cmd: OpenclawCommand) -> Result<()> {
                 },
             };
 
+            let original_cfg = cfg.clone();
             apply_hooks(&mut cfg, &token);
             apply_gateway_defaults(&mut cfg)?;
+            let plugin_base_url = eventbus_url.or_else(|| env::var("CORALL_EVENTBUS_URL").ok());
+            let staged_plugin = if skip_plugin_install {
+                None
+            } else {
+                let staged = stage_embedded_polling_plugin()?;
+                apply_polling_plugin_config(&mut cfg, plugin_base_url.as_deref());
+                Some(staged)
+            };
+            let changed = cfg != original_cfg;
 
-            let content = serde_json::to_string_pretty(&cfg)?;
-            fs::write(&config_path, &content)
-                .with_context(|| format!("failed to write {}", config_path.display()))?;
+            if changed {
+                let content = serde_json::to_string_pretty(&cfg)?;
+                fs::write(&config_path, &content)
+                    .with_context(|| format!("failed to write {}", config_path.display()))?;
+            }
+
+            let plugin_install = if let Some(staged) = staged_plugin {
+                install_openclaw_plugin(&staged)?;
+                PluginInstallResult::installed(staged)
+            } else {
+                PluginInstallResult::skipped()
+            };
 
             // Report what was written.
             //
@@ -108,6 +203,7 @@ pub async fn run(cmd: OpenclawCommand) -> Result<()> {
             let prefixes = cfg["hooks"]["allowedSessionKeyPrefixes"].clone();
             let mut result = json!({
                 "configPath": config_path.display().to_string(),
+                "changed": changed,
                 "tokenGenerated": generated,
                 "tokenKept": kept,
                 "applied": {
@@ -121,6 +217,7 @@ pub async fn run(cmd: OpenclawCommand) -> Result<()> {
                         "bind": cfg["gateway"]["bind"],
                     },
                 },
+                "plugin": plugin_install.to_json(plugin_base_url.as_deref()),
             });
             if generated || kept {
                 result["webhookToken"] = json!(token);
@@ -129,6 +226,37 @@ pub async fn run(cmd: OpenclawCommand) -> Result<()> {
         }
     }
     Ok(())
+}
+
+struct PluginInstallResult {
+    installed: bool,
+    source_path: Option<PathBuf>,
+}
+
+impl PluginInstallResult {
+    const fn skipped() -> Self {
+        Self {
+            installed: false,
+            source_path: None,
+        }
+    }
+
+    const fn installed(source_path: PathBuf) -> Self {
+        Self {
+            installed: true,
+            source_path: Some(source_path),
+        }
+    }
+
+    fn to_json(&self, base_url: Option<&str>) -> Value {
+        json!({
+            "id": POLLING_PLUGIN_ID,
+            "installed": self.installed,
+            "sourcePath": self.source_path.as_ref().map(|p| p.display().to_string()),
+            "baseUrl": base_url,
+            "credentialProfile": "provider",
+        })
+    }
 }
 
 /// Merge the Corall-required hooks fields into the config.
@@ -158,11 +286,90 @@ fn apply_hooks(cfg: &mut Value, webhook_token: &str) {
     }
 }
 
+fn apply_polling_plugin_config(cfg: &mut Value, base_url: Option<&str>) {
+    let obj = cfg.as_object_mut().expect("cfg is an object");
+    let plugins = obj.entry("plugins").or_insert_with(|| json!({}));
+    let plugins = plugins.as_object_mut().expect("plugins is an object");
+    let entries = plugins.entry("entries").or_insert_with(|| json!({}));
+    let entries = entries
+        .as_object_mut()
+        .expect("plugins.entries is an object");
+
+    let entry = entries
+        .entry(POLLING_PLUGIN_ID)
+        .or_insert_with(|| json!({}));
+    let entry = entry
+        .as_object_mut()
+        .expect("plugins.entries.corall-polling is an object");
+    entry.insert("enabled".to_string(), json!(true));
+
+    let config = entry.entry("config").or_insert_with(|| json!({}));
+    let config = config
+        .as_object_mut()
+        .expect("plugins.entries.corall-polling.config is an object");
+    config.insert("credentialProfile".to_string(), json!("provider"));
+    if let Some(base_url) = base_url.filter(|url| !url.trim().is_empty()) {
+        config.insert("baseUrl".to_string(), json!(base_url));
+    }
+}
+
+fn stage_embedded_polling_plugin() -> Result<PathBuf> {
+    let target = embedded_plugin_target_dir()?;
+    write_embedded_polling_plugin(&target)?;
+    Ok(target)
+}
+
+fn write_embedded_polling_plugin(target: &Path) -> Result<()> {
+    if target.exists() {
+        fs::remove_dir_all(&target)
+            .with_context(|| format!("failed to replace {}", target.display()))?;
+    }
+    for file in EMBEDDED_POLLING_PLUGIN_FILES {
+        let path = target.join(file.path);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("failed to create {}", parent.display()))?;
+        }
+        fs::write(&path, file.bytes)
+            .with_context(|| format!("failed to write {}", path.display()))?;
+    }
+    Ok(())
+}
+
+fn embedded_plugin_target_dir() -> Result<PathBuf> {
+    let home = dirs::home_dir().context("cannot determine home directory")?;
+    Ok(home
+        .join(".corall")
+        .join("openclaw-plugins")
+        .join(POLLING_PLUGIN_ID))
+}
+
+fn install_openclaw_plugin(plugin_dir: &Path) -> Result<()> {
+    let output = Command::new("openclaw")
+        .args(["plugins", "install", "--force"])
+        .arg(plugin_dir)
+        .output()
+        .context(
+            "failed to run `openclaw plugins install`; install OpenClaw or pass --skip-plugin-install",
+        )?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        bail!(
+            "openclaw plugins install failed with status {}\nstdout:\n{}\nstderr:\n{}",
+            output.status,
+            stdout.trim(),
+            stderr.trim()
+        );
+    }
+    Ok(())
+}
+
 /// Set gateway fields required by Corall.
 ///
 /// Both `gateway.mode` and `gateway.bind` are forced unconditionally:
-/// - `mode = "local"` — the gateway must run on this machine for webhook delivery.
-/// - `bind = "lan"` — binds to 0.0.0.0 so the gateway is reachable for incoming webhooks.
+/// - `mode = "local"` — the gateway must run on this machine for local hook delivery.
+/// - `bind = "lan"` — binds to 0.0.0.0 so the polling plugin can reach the gateway in containers.
 ///
 /// Fails if `gateway.tailscale.mode` is `"serve"` or `"funnel"`: OpenClaw rejects
 /// the combination of `bind: "lan"` (non-loopback) with tailscale serve/funnel.
@@ -251,4 +458,84 @@ fn expand_tilde(path: &str) -> PathBuf {
         return home.join(rest);
     }
     PathBuf::from(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::SystemTime;
+    use std::time::UNIX_EPOCH;
+
+    use super::*;
+
+    #[test]
+    fn apply_polling_plugin_config_enables_provider_poller() {
+        let mut cfg = json!({
+            "plugins": {
+                "entries": {
+                    "other": { "enabled": true }
+                }
+            }
+        });
+
+        apply_polling_plugin_config(&mut cfg, Some("http://eventbus:8081"));
+
+        let entry = &cfg["plugins"]["entries"]["corall-polling"];
+        assert_eq!(entry["enabled"], true);
+        assert_eq!(entry["config"]["baseUrl"], "http://eventbus:8081");
+        assert_eq!(entry["config"]["credentialProfile"], "provider");
+        assert_eq!(cfg["plugins"]["entries"]["other"]["enabled"], true);
+    }
+
+    #[test]
+    fn apply_polling_plugin_config_preserves_existing_base_url_when_missing() {
+        let mut cfg = json!({
+            "plugins": {
+                "entries": {
+                    "corall-polling": {
+                        "enabled": false,
+                        "config": {
+                            "baseUrl": "http://existing:8081",
+                            "consumerId": "stable"
+                        }
+                    }
+                }
+            }
+        });
+
+        apply_polling_plugin_config(&mut cfg, None);
+
+        let config = &cfg["plugins"]["entries"]["corall-polling"]["config"];
+        assert_eq!(cfg["plugins"]["entries"]["corall-polling"]["enabled"], true);
+        assert_eq!(config["baseUrl"], "http://existing:8081");
+        assert_eq!(config["consumerId"], "stable");
+        assert_eq!(config["credentialProfile"], "provider");
+    }
+
+    #[test]
+    fn embedded_plugin_bundle_contains_runtime_files() {
+        let dir = unique_temp_dir("corall-polling-embedded");
+        write_embedded_polling_plugin(&dir).unwrap();
+
+        assert!(dir.join("package.json").is_file());
+        assert!(dir.join("openclaw.plugin.json").is_file());
+        assert!(dir.join("dist/index.js").is_file());
+        assert!(dir.join("dist/src/service.js").is_file());
+
+        let package = fs::read_to_string(dir.join("package.json")).unwrap();
+        assert!(package.contains(r#""name": "corall-polling""#));
+        assert!(package.contains(r#""main": "./dist/index.js""#));
+
+        let manifest = fs::read_to_string(dir.join("openclaw.plugin.json")).unwrap();
+        assert!(manifest.contains(r#""id": "corall-polling""#));
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    fn unique_temp_dir(prefix: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("{prefix}-{}-{nanos}", std::process::id()))
+    }
 }

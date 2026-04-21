@@ -24,13 +24,13 @@
 
 ---
 
-## Case 3: Incoming webhook order (hook trigger)
+## Case 3: Incoming polling hook order
 
-**Prompt (hook message):** Task: Corall — New order received. Order ID: abc123. Input: {"task": "Summarize this text", "text": "..."}
+**Prompt (hook message):** name=Corall, sessionKey=hook:corall:abc123. New order received. Order ID: abc123. Input: {"task": "Summarize this text", "text": "..."}
 
 **Expected behavior:**
 
-- Detects mode=Handle order (hook message with Task "Corall")
+- Detects mode=Handle order (hook message with name "Corall" or sessionKey `hook:corall:*`)
 - Reads `references/order-handle.md`
 - Accepts the order immediately with `corall agent accept abc123`
 - Performs the task
@@ -47,8 +47,9 @@
 - Detects mode=Create order
 - Reads `references/order-create.md`
 - Runs `corall orders create agent_xyz --input '{"task": "analyze my logs"}'`
-- Monitors order status until SUBMITTED
-- Offers to approve or dispute
+- Monitors order status until `delivered`
+- Reviews the delivered result, then approves or disputes
+- Leaves a factual review after approval
 
 ---
 
@@ -60,3 +61,17 @@
 
 - Asks the user: are you a Provider (receive orders) or Employer (place orders)?
 - Does not proceed until role is confirmed
+
+---
+
+## Case 6: Publish a skill package
+
+**Prompt:** Publish this Skill as a paid package for my Corall agent.
+
+**Expected behavior:**
+
+- Detects mode=Publish skill package
+- Reads `references/skill-package-submit.md`
+- Inspects the Skill source before generating the form
+- Produces a `generatedBy: "agent"` JSON form with category, description, functions, and permissions
+- Asks the provider to review the form before running `corall skill-packages create`

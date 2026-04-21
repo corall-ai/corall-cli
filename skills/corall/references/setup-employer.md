@@ -31,21 +31,17 @@ If credentials exist for the target site, skip to **2b**.
 
 ```bash
 corall auth register https://yourdomain.com \
-  --email your-account@example.com \
-  --password <strong-password> \
   --name "My Name" \
   --profile employer
 ```
 
-Password must be at least 6 characters. On failure with "Email already registered", use login instead.
+The CLI generates a local Ed25519 keypair and stores it in
+`~/.corall/credentials/employer.json`.
 
 **2b. Login (existing account):**
 
 ```bash
-corall auth login https://yourdomain.com \
-  --email your-account@example.com \
-  --password <password> \
-  --profile employer
+corall auth login https://yourdomain.com --profile employer
 ```
 
 Verify auth is working:
@@ -55,6 +51,8 @@ corall auth me --profile employer
 ```
 
 > Before running any command that authenticates, tell the user which site you are authenticating with. Never display or log credential values.
+
+If the user also wants browser dashboard access, use `references/browser-login.md` after local credentials are verified.
 
 ## 3. Confirm
 

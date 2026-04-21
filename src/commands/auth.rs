@@ -5,6 +5,7 @@ use serde_json::json;
 use crate::client::ApiClient;
 use crate::credentials;
 use crate::credentials::Credential;
+use crate::credentials::CredentialUser;
 use crate::credentials::site_to_base_url;
 
 #[derive(Subcommand)]
@@ -13,12 +14,12 @@ pub enum AuthCommand {
     Register {
         /// Site hostname (e.g. corall.example.com)
         site: String,
-        /// Email address
+        /// Legacy option accepted for compatibility; public-key auth does not use it.
         #[arg(long)]
-        email: String,
-        /// Password (min 6 characters)
+        email: Option<String>,
+        /// Legacy option accepted for compatibility; public-key auth does not use it.
         #[arg(long)]
-        password: String,
+        password: Option<String>,
         /// Display name
         #[arg(long)]
         name: String,
@@ -27,12 +28,17 @@ pub enum AuthCommand {
     Login {
         /// Site hostname
         site: String,
-        /// Email address
+        /// Legacy option accepted for compatibility; public-key auth does not use it.
         #[arg(long)]
-        email: String,
-        /// Password
+        email: Option<String>,
+        /// Legacy option accepted for compatibility; public-key auth does not use it.
         #[arg(long)]
-        password: String,
+        password: Option<String>,
+    },
+    /// Approve a browser login request with the local Ed25519 key
+    Browser {
+        #[command(subcommand)]
+        cmd: BrowserAuthCommand,
     },
     /// Show current authenticated user info
     Me,
@@ -40,16 +46,29 @@ pub enum AuthCommand {
     Remove,
 }
 
+#[derive(Subcommand)]
+pub enum BrowserAuthCommand {
+    /// Approve a browser login code shown by the web app
+    Approve {
+        /// Site hostname
+        site: String,
+        /// Browser login code
+        #[arg(long)]
+        code: String,
+    },
+}
+
 pub async fn run(cmd: AuthCommand, profile: &str) -> Result<()> {
     match cmd {
         AuthCommand::Register {
             site,
-            email,
-            password,
+            email: _,
+            password: _,
             name,
         } => {
+            let key = credentials::generate_key()?;
             let mut client = ApiClient::new(site_to_base_url(&site));
-            let body = json!({ "email": email, "password": password, "name": name });
+            let body = json!({ "publicKey": &key.public_key, "name": name });
             let resp = client.post("/api/auth/register", &body).await?;
 
             let user = resp.get("user").cloned().unwrap_or_default();
@@ -58,60 +77,79 @@ pub async fn run(cmd: AuthCommand, profile: &str) -> Result<()> {
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string();
+            let public_key = user
+                .get("publicKey")
+                .and_then(|v| v.as_str())
+                .unwrap_or(&key.public_key)
+                .to_string();
             let registered_at = user
                 .get("createdAt")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
+            let token = resp
+                .get("token")
+                .and_then(|v| v.as_str())
+                .map(str::to_owned);
+            let token_expires_at = token.as_ref().map(|_| token_expiry_timestamp());
 
-            credentials::save(profile, &Credential {
-                site,
-                email,
-                password,
-                user_id,
-                agent_id: None,
-                registered_at,
-                token: None,
-                token_expires_at: None,
-            })?;
+            credentials::save(
+                profile,
+                &Credential {
+                    site,
+                    user: CredentialUser {
+                        id: user_id,
+                        public_key,
+                    },
+                    private_key_pkcs8: key.private_key_pkcs8,
+                    agent_id: None,
+                    registered_at,
+                    token,
+                    token_expires_at,
+                },
+            )?;
 
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
 
         AuthCommand::Login {
             site,
-            email,
-            password,
+            email: _,
+            password: _,
         } => {
-            let mut client = ApiClient::new(site_to_base_url(&site));
-            let body = json!({ "email": email, "password": password });
-            let resp = client.post("/api/auth/login", &body).await?;
+            let mut cred = credentials::load(profile)?;
+            if cred.site != site {
+                anyhow::bail!(
+                    "credentials for profile '{profile}' belong to '{}', not '{site}'",
+                    cred.site
+                );
+            }
 
-            let user = resp.get("user").cloned().unwrap_or_default();
-            let user_id = user
-                .get("id")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
+            let client = ApiClient::new(site_to_base_url(&site));
+            let token = client.login_with_key(&cred).await?;
+            cred.token = Some(token);
+            cred.token_expires_at = Some(token_expiry_timestamp());
+            credentials::save(profile, &cred)?;
 
-            // Preserve existing agentId if already set for this profile, site, and email.
-            let agent_id = credentials::load(profile)
-                .ok()
-                .filter(|c| c.site == site && c.email == email)
-                .and_then(|c| c.agent_id);
-
-            credentials::save(profile, &Credential {
-                site,
-                email,
-                password,
-                user_id,
-                agent_id,
-                registered_at: None,
-                token: None,
-                token_expires_at: None,
-            })?;
-
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
+            let resp = client.get("/api/auth/me").await?;
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
+
+        AuthCommand::Browser { cmd } => match cmd {
+            BrowserAuthCommand::Approve { site, code } => {
+                let cred = credentials::load(profile)?;
+                if cred.site != site {
+                    anyhow::bail!(
+                        "credentials for profile '{profile}' belong to '{}', not '{site}'",
+                        cred.site
+                    );
+                }
+
+                let client = ApiClient::new(site_to_base_url(&site));
+                let resp = client.approve_browser_login(&cred, &code).await?;
+                println!("{}", serde_json::to_string_pretty(&resp)?);
+            }
+        },
 
         AuthCommand::Me => {
             let cred = credentials::load(profile)?;
@@ -126,4 +164,12 @@ pub async fn run(cmd: AuthCommand, profile: &str) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn token_expiry_timestamp() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
+        + 7 * 24 * 3600
 }

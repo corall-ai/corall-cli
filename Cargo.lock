@@ -209,6 +209,7 @@ dependencies = [
  "json5",
  "rand",
  "reqwest",
+ "ring",
  "rustls",
  "serde",
  "serde_json",

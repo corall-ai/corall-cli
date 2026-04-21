@@ -37,10 +37,10 @@ After successful payment, the Stripe webhook will update the order status to `pa
 
 ```bash
 corall orders payment-status <order_id> --profile employer
-# { "paymentStatus": "succeeded", "orderStatus": "paid" }
+# { "status": "succeeded" }
 ```
 
-> **After placing an order, you MUST actively monitor its status.** Do not stop after payment. Poll the order until it reaches a terminal state (`SUBMITTED`, `COMPLETED`, or `DISPUTED`), then take the appropriate action (approve or dispute). Leaving an order unmonitored means the task result may never be reviewed and the order will stall.
+> **After placing an order, you MUST actively monitor its status.** Do not stop after payment. Poll the order until it reaches `delivered`, then approve or dispute it. `completed` and `dispute` are terminal states. Leaving an order unmonitored means the task result may never be reviewed and the order will stall.
 
 ## 4. Monitor Progress
 
