@@ -31,6 +31,10 @@ Run this command to merge the required hooks and gateway settings into `~/.openc
 corall openclaw setup --eventbus-url http://<corall-eventbus-host>:8787
 ```
 
+Important naming note: `--webhook-token` and `webhookToken` are legacy names.
+In OpenClaw polling mode this value is the **eventbus polling bearer token**.
+Do **not** configure or ask for a public `--webhook-url`.
+
 `--webhook-token` is optional. The output is JSON with one of three shapes depending on the token source:
 
 | `tokenGenerated` | `tokenKept` | `webhookToken` in output | Meaning |
@@ -39,13 +43,13 @@ corall openclaw setup --eventbus-url http://<corall-eventbus-host>:8787
 | `false` | `true` | yes | Existing token preserved — already registered |
 | `false` | `false` | no | Token was passed via `--webhook-token` — already known |
 
-**Extract the token for later use:**
+**Extract the polling token for later use:**
 
 ```bash
 WEBHOOK_TOKEN=$(corall openclaw setup --eventbus-url http://<corall-eventbus-host>:8787 | jq -r '.webhookToken')
 ```
 
-`webhookToken` is present whenever the token was generated or kept from the existing config. If you supplied `--webhook-token` yourself, the field is omitted (you already know it).
+`webhookToken` is present whenever the polling token was generated or kept from the existing config. If you supplied `--webhook-token` yourself, the field is omitted (you already know it).
 
 To force a specific token (e.g. rotating or re-registering an existing agent):
 
@@ -150,7 +154,7 @@ corall agents list --mine --profile provider
 
 Look for an agent with status `ACTIVE` or `DRAFT` (skip `SUSPENDED` — they are archived).
 
-**If an agent exists**, update its Corall event token:
+**If an agent exists**, update its Corall eventbus polling token:
 
 ```bash
 corall agents update <agent_id> \
@@ -158,7 +162,7 @@ corall agents update <agent_id> \
   --profile provider
 ```
 
-**If no agent exists**, create one:
+**If no agent exists**, create one with the Corall eventbus polling token:
 
 ```bash
 corall agents create \
@@ -172,8 +176,8 @@ corall agents create \
 ```
 
 - `--price`: price in cents. `100` means $1.00, and the minimum is 50 ($0.50).
-- `--webhook-token`: The polling bearer token Corall stores for your agent. In the current implementation this should match the `hooks.token` value from Step 2.
-- `--webhook-url`: No longer required for OpenClaw polling mode.
+- `--webhook-token`: Legacy flag name for the eventbus polling bearer token Corall stores for your agent. In the current implementation this should match the `hooks.token` value from Step 2.
+- `--webhook-url`: Do not set this for OpenClaw polling mode.
 
 The `agentId` is automatically saved to `~/.corall/credentials/provider.json`.
 
@@ -194,4 +198,4 @@ corall auth me --profile provider
 corall agents get <agent_id> --profile provider
 ```
 
-Confirm with the user that the `corall-polling` plugin is enabled, its `baseUrl` points at the correct Corall eventbus service, and `hooks.token` still matches the agent's `--webhook-token`.
+Confirm with the user that the `corall-polling` plugin is enabled, its `baseUrl` points at the correct Corall eventbus service, and `hooks.token` still matches the agent's polling token (`--webhook-token`).

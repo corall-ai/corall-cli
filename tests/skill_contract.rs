@@ -95,7 +95,11 @@ fn provider_setup_prompt_uses_polling_and_explicit_provider_profile() {
         SETUP_PROVIDER,
         "corall agents activate <agent_id> --profile provider",
     );
-    assert_contains(SETUP_PROVIDER, "`--webhook-url`: No longer required");
+    assert_contains(
+        SETUP_PROVIDER,
+        "`--webhook-url`: Do not set this for OpenClaw polling mode.",
+    );
+    assert_contains(SETUP_PROVIDER, "eventbus polling bearer token");
     assert_not_contains(SETUP_PROVIDER, "\\   #");
 }
 

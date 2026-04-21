@@ -137,12 +137,14 @@ By default it also installs the CLI-bundled `corall-polling` OpenClaw plugin,
 enables `plugins.entries.corall-polling`, sets `credentialProfile="provider"`,
 and uses `--eventbus-url` or `CORALL_EVENTBUS_URL` as the plugin `baseUrl`.
 
-`--webhook-token` is optional. When omitted, a secure random token is
-generated. Output fields:
+`--webhook-token` is optional. The flag name is legacy; in OpenClaw polling
+mode it is the eventbus polling bearer token, not a public webhook setting.
+When omitted, a secure random token is generated. Do not set `--webhook-url`
+for OpenClaw polling mode. Output fields:
 
-- `webhookToken` (string) — present when the token was auto-generated or kept
-  from the existing OpenClaw config; pass this to
-  `corall agents create --webhook-token`
+- `webhookToken` (string) — legacy field name for the polling token; present
+  when the token was auto-generated or kept from the existing OpenClaw config;
+  pass this to `corall agents create --webhook-token`
 - `tokenGenerated` (bool) — true when the token was auto-generated
 - `configPath` (string) — absolute path of the config file that was written
 - `applied` (object) — the hooks and gateway fields that were set

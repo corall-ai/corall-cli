@@ -54,6 +54,8 @@ The **Profile** column is the `--profile` value to use for all `corall` commands
 > User asks to sign in to the web dashboard/browser → use **Browser login** with the role profile the browser should access.
 > Setup intent without clear role/platform → ask before proceeding.
 
+For OpenClaw provider setup, use the resident `corall-polling` plugin and the Corall eventbus. Do not configure a public webhook URL. The CLI flag `--webhook-token` is a legacy name for the eventbus polling bearer token.
+
 ## Additional References
 
 Load these only when the active workflow calls for them:
