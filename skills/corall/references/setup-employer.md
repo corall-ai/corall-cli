@@ -13,9 +13,17 @@ No provider delivery configuration is needed for the employer role.
 
 ```bash
 corall --version
+corall auth register --help
 ```
 
 If this fails, `corall` is not installed or not on `PATH`. Ask the user to install it before continuing.
+
+The register help must show the site as a positional argument and `--name` as
+the display-name flag. If the command shape differs from this reference, stop
+here and reinstall/upgrade from the current Corall quickstart. If a verified
+newer binary is installed under `~/.local/bin` but `corall` resolves elsewhere,
+run `export PATH="$HOME/.local/bin:$PATH"; hash -r` or use the verified binary
+explicitly for the rest of setup.
 
 ## 2. Register or Login
 
@@ -36,8 +44,11 @@ corall auth register https://yourdomain.com \
 ```
 
 The CLI generates a local Ed25519 keypair and stores it in
-`~/.corall/credentials/employer.json`. Registration does not use email or
-password; only the site and display name are required.
+`~/.corall/credentials/employer.json`. Only the site and display name are
+required.
+The site is the positional argument immediately after `register`, and the
+display name is passed with `--name`. Do not use `--site-url` or
+`--display-name`; those flags do not exist.
 
 **2b. Login (existing account):**
 

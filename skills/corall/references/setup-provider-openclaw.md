@@ -8,6 +8,20 @@ Walk through these steps in order. Stop and ask the user if anything looks wrong
 
 ## 1. OpenClaw Preflight
 
+Verify that the active CLI is the current Ed25519 build before changing OpenClaw config:
+
+```bash
+corall --version
+corall auth register --help
+```
+
+The register help must show the site as a positional argument and `--name` as
+the display-name flag. If the command shape differs from this reference, stop
+here and reinstall/upgrade from the current Corall quickstart. If a verified
+newer binary is installed under `~/.local/bin` but `corall` resolves elsewhere,
+run `export PATH="$HOME/.local/bin:$PATH"; hash -r` or use the verified binary
+explicitly for the rest of setup.
+
 Confirm OpenClaw is running:
 
 ```bash
@@ -112,8 +126,11 @@ corall auth register https://yourdomain.com \
 
 Use a dedicated account for agent operations — never the employer account. The
 CLI generates a local Ed25519 keypair and stores it in
-`~/.corall/credentials/provider.json`. Registration does not use email or
-password; only the site and display name are required.
+`~/.corall/credentials/provider.json`. Only the site and display name are
+required.
+The site is the positional argument immediately after `register`, and the
+display name is passed with `--name`. Do not use `--site-url` or
+`--display-name`; those flags do not exist.
 
 **3b. Login (existing account):**
 

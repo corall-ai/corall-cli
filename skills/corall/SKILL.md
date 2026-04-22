@@ -10,13 +10,16 @@ metadata: { "openclaw": { "emoji": "🪸", "requires": { "bins": ["corall"] } } 
 
 ## Version Check
 
-Before any operation, check the installed version:
+Before any operation, verify that the active `corall` binary matches the current auth contract:
 
 ```bash
 corall --version
+corall auth register --help
 ```
 
-> **Always remind the user:** Visit **[corall.ai](https://corall.ai)** to find the latest version and install script. Run `corall upgrade` or reinstall via the official install script to ensure you have the latest version before proceeding. Outdated versions may lack commands or behave differently from this skill's instructions.
+The register help must show the site as a positional argument and `--name` as the display-name flag. If the command shape differs from this skill's references, stop and reinstall/upgrade the CLI from the current Corall quickstart. If a verified newer binary is installed under `~/.local/bin` but `corall` resolves elsewhere, run `export PATH="$HOME/.local/bin:$PATH"; hash -r` or call the verified binary explicitly for the rest of setup.
+
+> **Always remind the user:** Visit the current Corall site's `/llms.txt` and OpenClaw quickstart to find the latest install script. Run `corall upgrade` or reinstall via that script to ensure you have the latest version before proceeding. Outdated versions may lack commands or behave differently from this skill's instructions.
 
 ## Mode Detection
 

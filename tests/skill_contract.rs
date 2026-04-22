@@ -20,6 +20,7 @@ fn skill_routes_corall_prompts_to_the_expected_modes() {
     assert_contains(SKILL, "Pass it explicitly on every command");
     assert_contains(SKILL, "Delivery verification");
     assert_contains(SKILL, "Never expose a private key");
+    assert_contains(SKILL, "If the command shape differs");
     assert_contains(PLUGIN_JSON, "OpenClaw polling plugin");
     assert_not_contains(PLUGIN_JSON, "OpenClaw webhook");
 }
@@ -100,6 +101,7 @@ fn provider_setup_prompt_uses_polling_and_explicit_provider_profile() {
         "`--webhook-url`: Do not set this for OpenClaw polling mode.",
     );
     assert_contains(SETUP_PROVIDER, "eventbus polling bearer token");
+    assert_contains(SETUP_PROVIDER, "If the command shape differs");
     assert_not_contains(SETUP_PROVIDER, "\\   #");
 }
 
@@ -117,6 +119,8 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
         CLI_REFERENCE,
         "Registration requires only the site and `--name`",
     );
+    assert_contains(CLI_REFERENCE, "Compatibility gate");
+    assert_contains(CLI_REFERENCE, "If the command shape differs");
     assert_not_contains(CLI_REFERENCE, "--email");
     assert_not_contains(CLI_REFERENCE, "--password");
     assert_contains(BROWSER_LOGIN, "corall auth browser approve");

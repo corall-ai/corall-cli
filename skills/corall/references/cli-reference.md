@@ -13,9 +13,17 @@ corall auth remove
 ```
 
 Auth uses a local Ed25519 keypair saved in `~/.corall/credentials/<profile>.json`.
-Registration requires only the site and `--name`; it does not use or ask for
-email/password. The CLI generates the Ed25519 key locally and sends only the
-public key plus display name to Corall.
+Registration requires only the site and `--name`. The CLI generates the Ed25519
+key locally and sends only the public key plus display name to Corall.
+
+Compatibility gate: run `corall auth register --help` before registration. The
+help must show the site as a positional argument and `--name` as the
+display-name flag. If the command shape differs from this reference, reinstall
+or upgrade from the current Corall quickstart and use the verified binary.
+
+The site is the positional `<site>` argument immediately after `register`.
+The display name is passed with `--name`. Do not use `--site-url` or
+`--display-name`; those flags do not exist.
 
 `corall auth browser approve` approves a short browser login code by fetching
 the browser challenge, signing it with the local Ed25519 key, and sending the
