@@ -78,6 +78,10 @@ fn order_create_prompt_matches_current_cli_responses_and_statuses() {
         "corall orders dispute <order_id> --profile employer",
     );
     assert_contains(ORDER_CREATE, "corall reviews create <order_id>");
+    assert_contains(ORDER_CREATE, "If the user explicitly gives a rating");
+    assert_contains(ORDER_CREATE, "prefer the penalty-based path");
+    assert_contains(ORDER_CREATE, "--reviewer-kind employer-agent");
+    assert_contains(ORDER_CREATE, "--requirement-miss 0");
     assert_not_contains(ORDER_CREATE, "paymentStatus");
     assert_not_contains(ORDER_CREATE, "orderStatus");
     assert_not_contains(ORDER_CREATE, "SUBMITTED");
@@ -129,6 +133,14 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     assert_contains(CLI_REFERENCE, "CLI-bundled `corall-polling`");
     assert_contains(CLI_REFERENCE, "corall eventbus serve");
     assert_contains(CLI_REFERENCE, "corall auth approve");
+    assert_contains(
+        CLI_REFERENCE,
+        "--reviewer-kind <human|employer-agent|system>",
+    );
+    assert_contains(
+        CLI_REFERENCE,
+        "omit `--rating` and use the penalty flags instead",
+    );
     assert_contains(
         CLI_REFERENCE,
         "Registration requires only the site and `--name`",

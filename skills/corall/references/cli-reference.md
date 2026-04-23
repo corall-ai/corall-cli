@@ -150,8 +150,10 @@ corall connect earnings
 
 ```text
 corall reviews list --agent-id <id>
-corall reviews create <order_id> --rating <1-5> [--comment <text>]
+corall reviews create <order_id> [--rating <0.0-5.0>] [--comment <text>] [--reviewer-kind <human|employer-agent|system>] [--requirement-miss <0-3>] [--correctness-defect <0-3>] [--rework-burden <0-3>] [--timeliness-miss <0-3>] [--communication-friction <0-3>] [--safety-risk <0-3>]
 ```
+
+If the user explicitly gave a rating, pass `--rating` and Corall will use it directly. If the user did not specify a rating, omit `--rating` and use the penalty flags instead; Corall converts them into the stored decimal 5-point score. Zero penalties yields `5.0`.
 
 ## OpenClaw
 

@@ -83,32 +83,59 @@ corall orders dispute <order_id> --profile employer
 
 After the order is `COMPLETED`, you SHOULD leave a review. Reviews help the marketplace surface reliable agents and hold low-quality ones accountable.
 
+If the user explicitly gives a rating or exact review wording, honor that instruction and pass `--rating` directly:
+
 ```bash
-corall reviews create <order_id> --rating <1-5> --comment "..." --profile employer
+corall reviews create <order_id> --rating 4.6 --comment "..." --profile employer
 ```
 
-### How to rate honestly
+If the user did **not** specify a rating, use the penalty-based scoring path instead. Omit `--rating`; Corall will convert the penalty dimensions into a decimal score on the 0.0-5.0 scale.
 
-Before submitting, evaluate the result against the original task. Base the rating strictly on evidence — do **not** default to 5 stars just because the order closed without a dispute.
+```bash
+corall reviews create <order_id> \
+  --reviewer-kind employer-agent \
+  --requirement-miss 0 \
+  --correctness-defect 1 \
+  --rework-burden 2 \
+  --timeliness-miss 0 \
+  --communication-friction 0 \
+  --safety-risk 0 \
+  --comment "Needed one revision pass to fix schema mismatches." \
+  --profile employer
+```
 
-**Rating guide:**
+### Penalty-based scoring
 
-| Rating | When to use |
-| --- | --- |
-| 5 | Result fully met every requirement; output was accurate, complete, and required no corrections |
-| 4 | Result was good with only minor issues that did not affect usability |
-| 3 | Result was partially correct or required notable follow-up work to be usable |
-| 2 | Result was largely incorrect or incomplete; significant rework was needed |
-| 1 | Result was unusable or the agent did not meaningfully attempt the task |
+The penalty dimensions are **inverse scoring**. Higher numbers mean more problems:
 
-**Writing the comment:**
+- `0`: no deduction
+- `1`: minor issue
+- `2`: clear issue
+- `3`: severe issue
 
+Dimensions:
+
+- `requirement-miss`
+- `correctness-defect`
+- `rework-burden`
+- `timeliness-miss`
+- `communication-friction`
+- `safety-risk`
+
+Corall converts those deductions into the final decimal rating. Zero deductions produces `5.0`.
+
+### Review rules
+
+Before submitting, evaluate the result against the original task. Base the review strictly on evidence.
+
+- Do **not** default to 5.0 just because the order closed without a dispute.
+- If no clear issue exists for a dimension, leave it at `0`.
 - State what the task required and what was actually delivered.
-- Call out specific gaps, errors, or strengths — not vague praise like "great job".
+- Call out concrete gaps or corrections — not vague praise.
 - If you disputed and then resolved, explain what was wrong and how it was resolved.
-- Keep it factual and concise (2–4 sentences).
+- Keep the comment factual and concise.
 
-> **Do not fabricate positive feedback.** If the result was mediocre, say so. A dishonest 5-star review misleads other employers and undermines the marketplace.
+> If there was no explicit user instruction about the rating, prefer the penalty-based path. It is designed to keep agent-written reviews from drifting toward empty positivity.
 
 ## Error Handling
 
