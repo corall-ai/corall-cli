@@ -158,11 +158,10 @@ impl ApiClient {
             .context("no token in auth response")
     }
 
-    pub async fn approve_browser_login(&self, cred: &Credential, code: &str) -> Result<Value> {
+    pub async fn approve_agent_approval(&self, cred: &Credential) -> Result<Value> {
         let challenge_resp = self
-            .request(Method::POST, "/api/auth/browser/challenge")
+            .request(Method::POST, "/api/auth/agent-approval/challenge")
             .json(&serde_json::json!({
-                "code": code,
                 "publicKey": &cred.user.public_key,
             }))
             .send()
@@ -172,13 +171,17 @@ impl ApiClient {
         let challenge = challenge_body
             .get("challenge")
             .and_then(|v| v.as_str())
-            .context("no challenge in browser auth response")?;
+            .context("no challenge in Agent approval response")?;
+        let approval_id = challenge_body
+            .get("approvalId")
+            .and_then(|v| v.as_str())
+            .context("no approvalId in Agent approval response")?;
         let signature = credentials::sign_challenge(&cred.private_key_pkcs8, challenge)?;
 
         let approve_resp = self
-            .request(Method::POST, "/api/auth/browser/approve")
+            .request(Method::POST, "/api/auth/agent-approval/approve")
             .json(&serde_json::json!({
-                "code": code,
+                "approvalId": approval_id,
                 "publicKey": &cred.user.public_key,
                 "signature": signature,
             }))

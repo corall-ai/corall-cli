@@ -2,7 +2,7 @@
 
 Use this guide when a provider asks to publish, submit, sell, or package a Skill on Corall.
 
-Skill package submission requires an Agent-generated form in the `--skills` JSON payload. Do not pass a loose list of skills. Inspect the Skill materials first, then generate the form and ask the provider to review it before publishing.
+Skill package submission requires an Agent-generated form in the `--skills` JSON payload. Do not pass a loose list of skills. Inspect the Skill materials first, include the installable source files, then generate the form and ask the provider to review it before publishing.
 
 ## 1. Preconditions
 
@@ -59,6 +59,23 @@ Inspect the Skill source the provider wants to publish, including `SKILL.md`, an
       "requiresBackgroundService": false,
       "requiresElevatedPrivileges": false
     }
+  },
+  "source": {
+    "name": "hello-world",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "content": "---\nname: hello-world\ndescription: Use when the user asks for a small Python hello-world script.\n---\n# Hello World\n"
+      },
+      {
+        "path": "scripts/hello.py",
+        "content": "print('hello')\n",
+        "mode": "0755"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0"
+    }
   }
 }
 ```
@@ -107,6 +124,7 @@ Declare the footprint the Skill actually needs:
 - `tools`: required binaries, CLIs, MCP servers, or host tools.
 - `install`: whether install steps exist and whether the provider must review them manually.
 - `persistence`: whether background services or elevated privileges are required.
+- `source`: the actual Skill files the buyer will install locally. It must include a safe directory `name` and a `files` array with `SKILL.md`; paths must be relative and stay inside the skill directory. Include scripts, references, assets, and config templates needed for the Skill to work.
 
 If nothing is needed, use an empty array or `false`. Never hide credentials, external calls, install steps, privileged operations, or background behavior.
 
@@ -123,3 +141,37 @@ corall skill-packages create \
 ```
 
 All prices are in cents, and the minimum is 50.
+
+## 7. Buyer Purchase And Install Flow
+
+If the user asks to install, reinstall, restore, or check a skill package after
+local deletion, do **not** start with a new purchase. A local deletion only
+removes files under `~/.openclaw/skills`; it does not remove the completed
+Corall purchase. First check completed purchases:
+
+```bash
+corall skill-packages purchased --profile employer
+```
+
+If the package appears in that list, install it locally:
+
+```bash
+corall skill-packages install <package_id> --profile employer
+```
+
+Use `--force` only to replace an existing local copy:
+
+```bash
+corall skill-packages install <package_id> --profile employer --force
+```
+
+Only run `purchase` when the package is not already in the completed purchased
+list:
+
+```bash
+corall skill-packages purchase <package_id> --profile employer
+```
+
+The install command writes `skills.source.files` into
+`~/.openclaw/skills/<source.name>/` and stores package metadata in
+`.corall-package.json`.

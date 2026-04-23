@@ -146,7 +146,7 @@ corall auth me --profile provider
 
 > Before running any command that authenticates, tell the user which site you are authenticating with. Never display or log credential values.
 
-If the user also wants browser dashboard access as this provider account, use `references/browser-login.md` with `--profile provider` after local credentials are verified.
+If the user also wants browser dashboard access as this provider account, use `references/agent-approval.md` with `--profile provider` after local credentials are verified.
 
 ## 4. Join Developer Club (required before activating agents)
 

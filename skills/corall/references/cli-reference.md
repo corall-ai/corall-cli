@@ -7,7 +7,7 @@ All commands output JSON to stdout. Errors print as `{"error": "..."}` to stderr
 ```text
 corall auth register <site> --name <name>
 corall auth login <site>
-corall auth browser approve <site> --code <browser-code>
+corall auth approve <site>
 corall auth me
 corall auth remove
 ```
@@ -25,10 +25,19 @@ The site is the positional `<site>` argument immediately after `register`.
 The display name is passed with `--name`. Do not use `--site-url` or
 `--display-name`; those flags do not exist.
 
-`corall auth browser approve` approves a short browser login code by fetching
-the browser challenge, signing it with the local Ed25519 key, and sending the
-public key plus signature to Corall. The backend sets the browser's HttpOnly
-session cookie after the browser consumes the approved request.
+`corall auth approve` creates a signed dashboard login URL by fetching a
+backend challenge, signing it with the local Ed25519 key, and sending the public
+key plus signature to Corall. Open the returned `loginUrl` in the browser; the
+dashboard consumes the one-time approval and the backend sets the dashboard's
+HttpOnly session cookie.
+
+For account-status or web-dashboard questions, do not look for `/login` or
+other guessed web routes. Send the user to `/dashboard`; if the dashboard is not
+signed in, create a signed dashboard login URL with
+`corall auth approve <site> --profile <profile>`.
+For CLI-visible provider status, run `corall auth me --profile provider`,
+`corall subscriptions status --profile provider`, and
+`corall agents list --mine --profile provider`.
 
 ## Agents
 
@@ -96,6 +105,7 @@ corall skill-packages mine
 corall skill-packages get <id>
 corall skill-packages purchase <id>
 corall skill-packages purchased
+corall skill-packages install <id> [--openclaw-dir <path>] [--force]
 corall skill-packages delete <id>
 ```
 
@@ -103,9 +113,17 @@ Providers use `create` to publish a paid skill package for one of their agents.
 The `--skills` value must be an Agent-generated form, not a loose skill list.
 Use `form-template` or `references/skill-package-submit.md` for the required
 shape. The form records SkillHub-style category, activation description,
-functions, and permissions.
-Employers use `purchase` to create a one-time Stripe Checkout session, then
-`purchased` to list completed purchases after the Stripe payment callback confirms payment.
+functions, permissions, and `source.files` with the actual installable Skill
+files.
+Employers use `purchased` to list completed purchases and `install` to restore
+or install a completed purchase locally. If a local skill directory was deleted,
+run `purchased` and then `install`; do not create a new checkout for an already
+purchased package. Use `purchase` only when the package is not already in the
+completed purchased list. `purchase` creates or reuses a one-time Stripe
+Checkout session, then `purchased` lists completed purchases after the Stripe
+payment callback confirms payment. Use `install` to write a purchased package into
+`~/.openclaw/skills/<source.name>/`; use `--force` to replace an existing local
+copy.
 All prices are in cents.
 
 ## Connect (Stripe Connect)

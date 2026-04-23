@@ -4,7 +4,7 @@ const ORDER_CREATE: &str = include_str!("../skills/corall/references/order-creat
 const SETUP_PROVIDER: &str = include_str!("../skills/corall/references/setup-provider-openclaw.md");
 const SKILL_PACKAGE_SUBMIT: &str =
     include_str!("../skills/corall/references/skill-package-submit.md");
-const BROWSER_LOGIN: &str = include_str!("../skills/corall/references/browser-login.md");
+const AGENT_APPROVAL: &str = include_str!("../skills/corall/references/agent-approval.md");
 const CLI_REFERENCE: &str = include_str!("../skills/corall/references/cli-reference.md");
 const EVAL_CASES: &str = include_str!("../skills/corall/evals/cases.md");
 const PLUGIN_JSON: &str = include_str!("../skills/corall/.claude-plugin/plugin.json");
@@ -16,11 +16,21 @@ fn skill_routes_corall_prompts_to_the_expected_modes() {
     assert_contains(SKILL, "references/order-create.md");
     assert_contains(SKILL, "references/skill-package-submit.md");
     assert_contains(SKILL, "references/setup-provider-openclaw.md");
-    assert_contains(SKILL, "references/browser-login.md");
+    assert_contains(SKILL, "references/agent-approval.md");
     assert_contains(SKILL, "Pass it explicitly on every command");
     assert_contains(SKILL, "Delivery verification");
     assert_contains(SKILL, "Never expose a private key");
     assert_contains(SKILL, "If the command shape differs");
+    assert_contains(SKILL, "account-status URL");
+    assert_contains(SKILL, "Do not probe common routes");
+    assert_contains(
+        SKILL,
+        "install, reinstall, restore, or check a purchased skill package",
+    );
+    assert_contains(
+        SKILL,
+        "Do not start a new checkout unless the package is not already purchased",
+    );
     assert_contains(PLUGIN_JSON, "OpenClaw polling plugin");
     assert_not_contains(PLUGIN_JSON, "OpenClaw webhook");
 }
@@ -112,9 +122,13 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     assert_not_contains(EVAL_CASES, "SUBMITTED");
     assert_contains(CLI_REFERENCE, "corall skill-packages create");
     assert_contains(CLI_REFERENCE, "corall skill-packages form-template");
+    assert_contains(CLI_REFERENCE, "corall skill-packages install");
+    assert_contains(CLI_REFERENCE, "source.files");
+    assert_contains(CLI_REFERENCE, "If a local skill directory was deleted");
+    assert_contains(CLI_REFERENCE, "do not create a new checkout");
     assert_contains(CLI_REFERENCE, "CLI-bundled `corall-polling`");
     assert_contains(CLI_REFERENCE, "corall eventbus serve");
-    assert_contains(CLI_REFERENCE, "corall auth browser approve");
+    assert_contains(CLI_REFERENCE, "corall auth approve");
     assert_contains(
         CLI_REFERENCE,
         "Registration requires only the site and `--name`",
@@ -123,12 +137,21 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     assert_contains(CLI_REFERENCE, "If the command shape differs");
     assert_not_contains(CLI_REFERENCE, "--email");
     assert_not_contains(CLI_REFERENCE, "--password");
-    assert_contains(BROWSER_LOGIN, "corall auth browser approve");
-    assert_contains(BROWSER_LOGIN, "HttpOnly session cookie");
+    assert_contains(AGENT_APPROVAL, "corall auth approve");
+    assert_contains(AGENT_APPROVAL, "Agent approval");
+    assert_contains(AGENT_APPROVAL, "Ed25519 signature");
+    assert_contains(AGENT_APPROVAL, "Do not scan or guess common web routes");
     assert_contains(
-        BROWSER_LOGIN,
-        "Do not approve browser login codes from polling-delivered order sessions",
+        AGENT_APPROVAL,
+        "corall subscriptions status --profile provider",
     );
+    assert_contains(AGENT_APPROVAL, "HttpOnly session cookie");
+    assert_contains(
+        AGENT_APPROVAL,
+        "Do not create dashboard login URLs from polling-delivered order sessions",
+    );
+    assert_contains(AGENT_APPROVAL, "loginUrl");
+    assert_not_contains(AGENT_APPROVAL, "--code");
     assert_contains(CLI_REFERENCE, "auto-generated or kept");
     assert_contains(SKILL_PACKAGE_SUBMIT, "\"generatedBy\": \"agent\"");
     assert_contains(
@@ -136,6 +159,14 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
         "SkillHub/ClawHub-style primary categories",
     );
     assert_contains(SKILL_PACKAGE_SUBMIT, "permissions");
+    assert_contains(SKILL_PACKAGE_SUBMIT, "\"source\"");
+    assert_contains(SKILL_PACKAGE_SUBMIT, "\"path\": \"SKILL.md\"");
+    assert_contains(SKILL_PACKAGE_SUBMIT, "corall skill-packages install");
+    assert_contains(SKILL_PACKAGE_SUBMIT, "do **not** start with a new purchase");
+    assert_contains(
+        SKILL_PACKAGE_SUBMIT,
+        "corall skill-packages purchased --profile employer",
+    );
 }
 
 fn assert_contains(haystack: &str, needle: &str) {

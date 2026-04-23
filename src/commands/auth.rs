@@ -35,27 +35,15 @@ pub enum AuthCommand {
         #[arg(long, hide = true)]
         password: Option<String>,
     },
-    /// Approve a browser login request with the local Ed25519 key
-    Browser {
-        #[command(subcommand)]
-        cmd: BrowserAuthCommand,
+    /// Approve a dashboard session with the local Ed25519 key
+    Approve {
+        /// Site hostname
+        site: String,
     },
     /// Show current authenticated user info
     Me,
     /// Remove saved credentials
     Remove,
-}
-
-#[derive(Subcommand)]
-pub enum BrowserAuthCommand {
-    /// Approve a browser login code shown by the web app
-    Approve {
-        /// Site hostname
-        site: String,
-        /// Browser login code
-        #[arg(long)]
-        code: String,
-    },
 }
 
 pub async fn run(cmd: AuthCommand, profile: &str) -> Result<()> {
@@ -135,21 +123,7 @@ pub async fn run(cmd: AuthCommand, profile: &str) -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
 
-        AuthCommand::Browser { cmd } => match cmd {
-            BrowserAuthCommand::Approve { site, code } => {
-                let cred = credentials::load(profile)?;
-                if cred.site != site {
-                    anyhow::bail!(
-                        "credentials for profile '{profile}' belong to '{}', not '{site}'",
-                        cred.site
-                    );
-                }
-
-                let client = ApiClient::new(site_to_base_url(&site));
-                let resp = client.approve_browser_login(&cred, &code).await?;
-                println!("{}", serde_json::to_string_pretty(&resp)?);
-            }
-        },
+        AuthCommand::Approve { site } => approve_dashboard_session(&site, profile).await?,
 
         AuthCommand::Me => {
             let cred = credentials::load(profile)?;
@@ -163,6 +137,21 @@ pub async fn run(cmd: AuthCommand, profile: &str) -> Result<()> {
             println!("{}", json!({ "removed": removed }));
         }
     }
+    Ok(())
+}
+
+async fn approve_dashboard_session(site: &str, profile: &str) -> Result<()> {
+    let cred = credentials::load(profile)?;
+    if cred.site != site {
+        anyhow::bail!(
+            "credentials for profile '{profile}' belong to '{}', not '{site}'",
+            cred.site
+        );
+    }
+
+    let client = ApiClient::new(site_to_base_url(site));
+    let resp = client.approve_agent_approval(&cred).await?;
+    println!("{}", serde_json::to_string_pretty(&resp)?);
     Ok(())
 }
 

@@ -1,6 +1,6 @@
 ---
 name: corall
-description: 'Handle the Corall marketplace — setup, order handling, and order creation. Triggers when: (1) a Corall polling delivery message has Task name "Corall" or session key contains "hook:corall:", (2) the user asks to accept, process, check, or submit a Corall order, (3) the user asks to place, create, or buy a Corall order, or (4) the user asks to set up or configure Corall (on OpenClaw or Claude Code).'
+description: 'Handle the Corall marketplace — setup, Agent approval, account status, order handling, order creation, and skill package buying/installing. Triggers when: (1) a Corall polling delivery message has Task name "Corall" or session key contains "hook:corall:", (2) the user asks to accept, process, check, or submit a Corall order, (3) the user asks to place, create, or buy a Corall order, (4) the user asks to set up or configure Corall (on OpenClaw or Claude Code), (5) the user asks about Corall login, dashboard access, account status, account URL, subscriptions, or their listed agents, or (6) the user asks to publish, buy, install, reinstall, restore, or check a Corall skill package.'
 metadata: { "openclaw": { "emoji": "🪸", "requires": { "bins": ["corall"] } } }
 ---
 
@@ -46,15 +46,17 @@ The register help must show the site as a positional argument and `--name` as th
 | Employer | Claude Code | `employer` | `references/setup-employer.md` |
 | Handle order (polling delivery) | — | `provider` | `references/order-handle.md` |
 | Create order | — | `employer` | `references/order-create.md` |
-| Browser login | — | active role profile | `references/browser-login.md` |
+| Agent approval/account status | — | active role profile | `references/agent-approval.md` |
 | Publish skill package | — | `provider` | `references/skill-package-submit.md` |
+| Buy/install skill package | — | `employer` | `references/skill-package-submit.md` |
 | Payout | — | `provider` | `references/payout.md` |
 
 The **Profile** column is the `--profile` value to use for all `corall` commands in that mode. Pass it explicitly on every command — do not rely on the default.
 
 > Corall polling delivery with Task `Corall` or session key `hook:corall:*` → always **Handle order** with `--profile provider`.
 > User asks to place, create, or buy an order → always **Create order** with `--profile employer`.
-> User asks to sign in to the web dashboard/browser → use **Browser login** with the role profile the browser should access.
+> User asks to sign in to the web dashboard, asks whether there is a login/account page, asks for an account-status URL, or asks to check the account from a browser → use **Agent approval/account status**. Do not probe common routes such as `/login`, `/signin`, `/account`, or `/profile`; direct the user to the Corall dashboard, create a signed login URL with `corall auth approve`, and have the user open the returned `loginUrl`.
+> User asks to install, reinstall, restore, or check a purchased skill package, or says a local skill directory was deleted → use **Buy/install skill package**. First run `corall skill-packages purchased --profile employer`, then `corall skill-packages install <package_id> --profile employer` for completed purchases. Do not start a new checkout unless the package is not already purchased.
 > Setup intent without clear role/platform → ask before proceeding.
 
 For OpenClaw provider setup, provider execution is polling-based. Use the resident `corall-polling` plugin and the Corall eventbus. Corall does not call the provider over a public webhook in this mode. Do not configure a public webhook URL. The CLI flag `--webhook-token` is a legacy name for the eventbus polling bearer token.
@@ -64,7 +66,7 @@ For OpenClaw provider setup, provider execution is polling-based. Use the reside
 Load these only when the active workflow calls for them:
 
 - `references/cli-reference.md` — Full CLI command listing with all flags
-- `references/browser-login.md` — Browser dashboard login with Agent-approved Ed25519 challenge
+- `references/agent-approval.md` — Dashboard access and account status through Agent approval
 - `references/file-upload.md` — Presigned URL upload workflow (needed when submitting an artifact)
 - `references/skill-package-submit.md` — Agent-generated form required for paid skill package submission
 - `references/payout.md` — Provider payout guide (Stripe Connect onboarding and transferring earnings)
@@ -75,4 +77,4 @@ Load these only when the active workflow calls for them:
 > 2. **Delivery verification** — The Corall eventbus verifies the agent token before polling delivery, and OpenClaw verifies `hooks.token` before accepting the local delivery from the resident polling plugin. Messages that reach this skill have already passed those checks.
 > 3. **Bounded scope** — In polling-delivered order mode, only perform the task in `inputPayload`. No pre-existing file access, no unrelated commands, no software installs.
 > 4. **Data egress** — Artifact URLs and presigned uploads send data to external servers. In interactive sessions, confirm with the user before submitting.
-> 5. **Browser login** — Approve browser login codes only in interactive user sessions. Never expose a private key, raw signature, or JWT; let the backend set the browser's HttpOnly cookie after challenge approval.
+> 5. **Agent approval** — Create dashboard login URLs only in interactive user sessions. Never expose a private key, raw signature, or JWT; let the backend set the dashboard's HttpOnly cookie after challenge approval.

@@ -17,17 +17,17 @@ use serde_json::Value;
 use serde_json::json;
 
 #[test]
-fn browser_approve_signs_challenge_without_leaking_secrets() -> Result<(), Box<dyn Error>> {
-    let challenge = b"corall browser login challenge";
+fn agent_ed25519_approval_signs_challenge_without_leaking_secrets() -> Result<(), Box<dyn Error>> {
+    let challenge = b"corall dashboard approval challenge";
     let challenge_hex = hex::encode(challenge);
     let state = Arc::new(Mutex::new(FakeAuthState {
         challenge_hex: challenge_hex.clone(),
         public_key: None,
         saw_register_without_password: false,
-        saw_valid_browser_signature: false,
+        saw_valid_agent_approval_signature: false,
     }));
     let server = FakeAuthServer::start(state.clone())?;
-    let home = TempHome::new("corall-cli-browser-auth")?;
+    let home = TempHome::new("corall-cli-agent-approval")?;
 
     let help = run_corall(&home, &["auth", "register", "--help"])?;
     assert!(help.status.success(), "help failed: {help:?}");
@@ -35,6 +35,23 @@ fn browser_approve_signs_challenge_without_leaking_secrets() -> Result<(), Box<d
     assert!(!help_stdout.contains("--email"));
     assert!(!help_stdout.contains("--password"));
     assert!(help_stdout.contains("--name"));
+
+    let auth_help = run_corall(&home, &["auth", "--help"])?;
+    assert!(
+        auth_help.status.success(),
+        "auth help failed: {auth_help:?}"
+    );
+    let auth_help_stdout = String::from_utf8(auth_help.stdout)?;
+    assert!(auth_help_stdout.contains("approve"));
+    assert!(!auth_help_stdout.contains("browser"));
+    assert!(!auth_help_stdout.contains("--code"));
+    let approve_help = run_corall(&home, &["auth", "approve", "--help"])?;
+    assert!(
+        approve_help.status.success(),
+        "approve help failed: {approve_help:?}"
+    );
+    let approve_help_stdout = String::from_utf8(approve_help.stdout)?;
+    assert!(!approve_help_stdout.contains("--code"));
 
     let register = run_corall(
         &home,
@@ -59,16 +76,14 @@ fn browser_approve_signs_challenge_without_leaking_secrets() -> Result<(), Box<d
             "--profile",
             "agent-test",
             "auth",
-            "browser",
             "approve",
             &server.base_url(),
-            "--code",
-            "ABCD-EFGH",
         ],
     )?;
     assert!(approve.status.success(), "approve failed: {approve:?}");
     let approve_stdout = String::from_utf8(approve.stdout)?;
     assert!(approve_stdout.contains(r#""approved": true"#));
+    assert!(approve_stdout.contains("loginUrl"));
     assert!(!approve_stdout.contains("token"));
     assert!(!approve_stdout.contains("privateKeyPkcs8"));
     assert!(!approve_stdout.contains("signature"));
@@ -79,11 +94,8 @@ fn browser_approve_signs_challenge_without_leaking_secrets() -> Result<(), Box<d
             "--profile",
             "agent-test",
             "auth",
-            "browser",
             "approve",
             "http://127.0.0.1:9",
-            "--code",
-            "ABCD-EFGH",
         ],
     )?;
     assert!(!wrong_site.status.success());
@@ -92,7 +104,7 @@ fn browser_approve_signs_challenge_without_leaking_secrets() -> Result<(), Box<d
 
     let state = state.lock().unwrap();
     assert!(state.saw_register_without_password);
-    assert!(state.saw_valid_browser_signature);
+    assert!(state.saw_valid_agent_approval_signature);
     Ok(())
 }
 
@@ -108,7 +120,7 @@ struct FakeAuthState {
     challenge_hex: String,
     public_key: Option<String>,
     saw_register_without_password: bool,
-    saw_valid_browser_signature: bool,
+    saw_valid_agent_approval_signature: bool,
 }
 
 struct FakeAuthServer {
@@ -157,8 +169,12 @@ fn handle_request(mut stream: TcpStream, state: &Arc<Mutex<FakeAuthState>>) -> R
     let request = read_http_request(&mut stream)?;
     match request.path.as_str() {
         "/api/auth/register" => handle_register(stream, state, request.body),
-        "/api/auth/browser/challenge" => handle_browser_challenge(stream, state, request.body),
-        "/api/auth/browser/approve" => handle_browser_approve(stream, state, request.body),
+        "/api/auth/agent-approval/challenge" => {
+            handle_agent_approval_challenge(stream, state, request.body)
+        }
+        "/api/auth/agent-approval/approve" => {
+            handle_agent_approval_approve(stream, state, request.body)
+        }
         _ => respond_json(stream, 404, json!({ "error": "not found" })),
     }
 }
@@ -198,13 +214,12 @@ fn handle_register(
     )
 }
 
-fn handle_browser_challenge(
+fn handle_agent_approval_challenge(
     stream: TcpStream,
     state: &Arc<Mutex<FakeAuthState>>,
     body: Vec<u8>,
 ) -> Result<(), String> {
     let body: Value = serde_json::from_slice(&body).map_err(|e| e.to_string())?;
-    assert_eq!(body["code"], "ABCD-EFGH");
     let public_key = body
         .get("publicKey")
         .and_then(Value::as_str)
@@ -216,20 +231,20 @@ fn handle_browser_challenge(
         stream,
         200,
         json!({
-            "requestId": "browser-request-1",
+            "approvalId": "agent-approval-request-1",
             "challenge": state.challenge_hex,
             "expiresAt": 1_776_807_600_i64
         }),
     )
 }
 
-fn handle_browser_approve(
+fn handle_agent_approval_approve(
     stream: TcpStream,
     state: &Arc<Mutex<FakeAuthState>>,
     body: Vec<u8>,
 ) -> Result<(), String> {
     let body: Value = serde_json::from_slice(&body).map_err(|e| e.to_string())?;
-    assert_eq!(body["code"], "ABCD-EFGH");
+    assert_eq!(body["approvalId"], "agent-approval-request-1");
     assert!(body.get("token").is_none());
     assert!(body.get("privateKeyPkcs8").is_none());
 
@@ -249,16 +264,17 @@ fn handle_browser_approve(
     };
     signature::UnparsedPublicKey::new(&signature::ED25519, public_key_bytes)
         .verify(&challenge, &signature_bytes)
-        .map_err(|_| "browser approval signature was invalid".to_string())?;
+        .map_err(|_| "Agent approval signature was invalid".to_string())?;
 
     let mut state = state.lock().unwrap();
-    state.saw_valid_browser_signature = true;
+    state.saw_valid_agent_approval_signature = true;
     respond_json(
         stream,
         200,
         json!({
             "approved": true,
-            "requestId": "browser-request-1",
+            "approvalId": "agent-approval-request-1",
+            "loginUrl": format!("{}/dashboard?agentApproval=agent-approval-request-1", "http://127.0.0.1"),
             "user": {
                 "id": "user-agent-test",
                 "name": "Agent Test",

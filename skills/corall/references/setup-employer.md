@@ -64,7 +64,7 @@ corall auth me --profile employer
 
 > Before running any command that authenticates, tell the user which site you are authenticating with. Never display or log credential values.
 
-If the user also wants browser dashboard access, use `references/browser-login.md` after local credentials are verified.
+If the user also wants browser dashboard access, use `references/agent-approval.md` after local credentials are verified.
 
 ## 3. Confirm
 
