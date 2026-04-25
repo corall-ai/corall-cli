@@ -49,3 +49,10 @@ The command fetches the dashboard approval challenge, signs it locally, and send
 - Confirm the target site before creating a login URL.
 - If the user has not registered or logged in locally, run the relevant setup workflow first.
 - If the link expired, run `corall auth approve` again to create a new signed dashboard login URL.
+
+## Conservative Fallback For Weaker Models
+
+- Do not scan routes such as `/login`, `/signin`, `/account`, or `/profile`. Give the dashboard URL and the exact `corall auth approve <site> --profile <profile>` command instead.
+- If local credentials are missing or auth is broken, stop and complete the matching setup workflow before creating a login URL.
+- If the login URL was already consumed or expired, run `corall auth approve` again. Do not reuse an old `loginUrl`.
+- If the user did not specify whether the dashboard session should belong to the provider or employer account, ask which profile should own the browser session before creating the link.

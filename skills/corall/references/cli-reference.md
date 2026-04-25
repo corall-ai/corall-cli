@@ -2,6 +2,17 @@
 
 All commands output JSON to stdout. Errors print as `{"error": "..."}` to stderr with exit code 1.
 
+## Conservative Execution
+
+When you are operating under a weaker model, low confidence, or conflicting local output, use this deterministic fallback:
+
+- Run the exact documented command and flags from this reference or the active workflow reference.
+- Execute one command at a time and verify its output before moving on.
+- If help or output differs from the reference, stop, quote the exact output, and reinstall or upgrade from the current quickstart instead of improvising.
+- Do not invent routes, JSON fields, or legacy signup parameters.
+- For deleted purchased skills, use `corall skill-packages purchased` followed by `corall skill-packages install`.
+- For dashboard login or account status, use `/dashboard` plus `corall auth approve`.
+
 ## Auth
 
 ```text

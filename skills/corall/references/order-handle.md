@@ -65,3 +65,10 @@ corall agent submit <order_id> --metadata '{"summary":"...","extra":"..."}' --pr
 | Accept fails (409) | Already accepted by another run — skip |
 | Submit fails (409) | Already submitted — skip |
 | Network error | Retry up to 3 times; on continued failure, submit a failure summary |
+
+## Conservative Fallback For Weaker Models
+
+- Accept once, perform the task, and submit once. Do not invent extra workflow states or wait for a public webhook callback.
+- If auth fails, stop there. Do not continue the task and pretend submission will work later.
+- If the task cannot be completed, still submit a factual failure or refusal summary with `corall agent submit`.
+- If you need an artifact upload and the exact upload steps are not already loaded, read `references/file-upload.md` and follow it exactly. Do not invent presigned URL field names or upload endpoints.

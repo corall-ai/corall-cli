@@ -2,9 +2,12 @@ const SKILL: &str = include_str!("../skills/corall/SKILL.md");
 const ORDER_HANDLE: &str = include_str!("../skills/corall/references/order-handle.md");
 const ORDER_CREATE: &str = include_str!("../skills/corall/references/order-create.md");
 const SETUP_PROVIDER: &str = include_str!("../skills/corall/references/setup-provider-openclaw.md");
+const SETUP_EMPLOYER: &str = include_str!("../skills/corall/references/setup-employer.md");
 const SKILL_PACKAGE_SUBMIT: &str =
     include_str!("../skills/corall/references/skill-package-submit.md");
 const AGENT_APPROVAL: &str = include_str!("../skills/corall/references/agent-approval.md");
+const FILE_UPLOAD: &str = include_str!("../skills/corall/references/file-upload.md");
+const PAYOUT: &str = include_str!("../skills/corall/references/payout.md");
 const CLI_REFERENCE: &str = include_str!("../skills/corall/references/cli-reference.md");
 const EVAL_CASES: &str = include_str!("../skills/corall/evals/cases.md");
 const PLUGIN_JSON: &str = include_str!("../skills/corall/.claude-plugin/plugin.json");
@@ -31,6 +34,11 @@ fn skill_routes_corall_prompts_to_the_expected_modes() {
         SKILL,
         "Do not start a new checkout unless the package is not already purchased",
     );
+    assert_contains(SKILL, "Conservative Fallback For Weaker Models");
+    assert_contains(SKILL, "Run the exact documented commands and flags");
+    assert_contains(SKILL, "quote the exact command and output");
+    assert_contains(SKILL, "Deleted purchased skill package");
+    assert_contains(SKILL, "Missing `jq` during artifact upload");
     assert_contains(PLUGIN_JSON, "OpenClaw polling plugin");
     assert_not_contains(PLUGIN_JSON, "OpenClaw webhook");
 }
@@ -52,6 +60,9 @@ fn order_handle_prompt_accepts_then_submits_with_provider_profile() {
         ORDER_HANDLE,
         "does **not** authorize reading or uploading pre-existing host files",
     );
+    assert_contains(ORDER_HANDLE, "Conservative Fallback For Weaker Models");
+    assert_contains(ORDER_HANDLE, "Do not invent extra workflow states");
+    assert_contains(ORDER_HANDLE, "still submit a factual failure or refusal summary");
     assert_not_contains(ORDER_HANDLE, "webhook mode");
 }
 
@@ -82,6 +93,13 @@ fn order_create_prompt_matches_current_cli_responses_and_statuses() {
     assert_contains(ORDER_CREATE, "prefer the penalty-based path");
     assert_contains(ORDER_CREATE, "--reviewer-kind employer-agent");
     assert_contains(ORDER_CREATE, "--requirement-miss 0");
+    assert_contains(ORDER_CREATE, "Conservative Fallback For Weaker Models");
+    assert_contains(ORDER_CREATE, "Do not assume payment succeeded");
+    assert_contains(
+        ORDER_CREATE,
+        "Do not approve, dispute, or review before the order reaches `delivered`",
+    );
+    assert_contains(ORDER_CREATE, "report the exact current status");
     assert_not_contains(ORDER_CREATE, "paymentStatus");
     assert_not_contains(ORDER_CREATE, "orderStatus");
     assert_not_contains(ORDER_CREATE, "SUBMITTED");
@@ -116,6 +134,13 @@ fn provider_setup_prompt_uses_polling_and_explicit_provider_profile() {
     );
     assert_contains(SETUP_PROVIDER, "eventbus polling bearer token");
     assert_contains(SETUP_PROVIDER, "If the command shape differs");
+    assert_contains(SETUP_PROVIDER, "Conservative Fallback For Weaker Models");
+    assert_contains(SETUP_PROVIDER, "quote the exact help output");
+    assert_contains(SETUP_PROVIDER, "Do not activate or present the agent as live");
+    assert_contains(
+        SETUP_PROVIDER,
+        "update that agent's polling token instead of creating a duplicate",
+    );
     assert_not_contains(SETUP_PROVIDER, "\\   #");
 }
 
@@ -147,6 +172,12 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     );
     assert_contains(CLI_REFERENCE, "Compatibility gate");
     assert_contains(CLI_REFERENCE, "If the command shape differs");
+    assert_contains(CLI_REFERENCE, "Conservative Execution");
+    assert_contains(CLI_REFERENCE, "Execute one command at a time");
+    assert_contains(
+        CLI_REFERENCE,
+        "Do not invent routes, JSON fields, or legacy signup parameters",
+    );
     assert_not_contains(CLI_REFERENCE, "--email");
     assert_not_contains(CLI_REFERENCE, "--password");
     assert_contains(AGENT_APPROVAL, "corall auth approve");
@@ -158,6 +189,8 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
         "corall subscriptions status --profile provider",
     );
     assert_contains(AGENT_APPROVAL, "HttpOnly session cookie");
+    assert_contains(AGENT_APPROVAL, "Conservative Fallback For Weaker Models");
+    assert_contains(AGENT_APPROVAL, "Do not reuse an old `loginUrl`");
     assert_contains(
         AGENT_APPROVAL,
         "Do not create dashboard login URLs from polling-delivered order sessions",
@@ -179,6 +212,54 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
         SKILL_PACKAGE_SUBMIT,
         "corall skill-packages purchased --profile employer",
     );
+    assert_contains(SKILL_PACKAGE_SUBMIT, "Conservative Fallback For Weaker Models");
+    assert_contains(SKILL_PACKAGE_SUBMIT, "Do not fabricate `source.files`");
+    assert_contains(
+        SKILL_PACKAGE_SUBMIT,
+        "Do not run `corall skill-packages create` until the provider has reviewed the generated form",
+    );
+    assert_contains(SETUP_EMPLOYER, "Conservative Fallback For Weaker Models");
+    assert_contains(
+        SETUP_EMPLOYER,
+        "Do not invent `--site-url`, `--display-name`, email, or password fields",
+    );
+    assert_contains(
+        SETUP_EMPLOYER,
+        "verify with `corall auth me --profile employer` instead of registering a second account",
+    );
+    assert_contains(FILE_UPLOAD, "Conservative Fallback For Weaker Models");
+    assert_contains(FILE_UPLOAD, "python3 -c");
+    assert_contains(FILE_UPLOAD, "stop and report the exact JSON");
+    assert_contains(PAYOUT, "Conservative Fallback For Weaker Models");
+    assert_contains(PAYOUT, "corall connect status --profile provider");
+    assert_contains(
+        PAYOUT,
+        "still answer with the full conditional sequence and include these literal command lines",
+    );
+    assert_contains(PAYOUT, "corall connect onboard --profile provider");
+    assert_contains(PAYOUT, "corall connect payout --profile provider");
+    assert_contains(
+        PAYOUT,
+        "Do not replace `corall connect onboard --profile provider` with vague advice like “open the onboardingUrl”",
+    );
+    assert_contains(
+        PAYOUT,
+        "do not stop at those visibility commands when the user needs to know whether onboarding or payout is the next action",
+    );
+    assert_contains(PAYOUT, "Do not claim money was transferred");
+    assert_contains(EVAL_CASES, "Stale CLI help requests email/password");
+    assert_contains(EVAL_CASES, "Deleted purchased skill package");
+    assert_contains(EVAL_CASES, "Artifact upload without jq");
+    assert_contains(EVAL_CASES, "Payout onboarding incomplete");
+    assert_contains(
+        EVAL_CASES,
+        "Still names `corall connect payout --profile provider` as the next action after onboarding is complete",
+    );
+    assert_contains(
+        EVAL_CASES,
+        "still includes those literal command lines in the answer",
+    );
+    assert_contains(EVAL_CASES, "Low-confidence deterministic fallback");
 }
 
 fn assert_contains(haystack: &str, needle: &str) {

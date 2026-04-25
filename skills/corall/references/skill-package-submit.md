@@ -175,3 +175,10 @@ corall skill-packages purchase <package_id> --profile employer
 The install command writes `skills.source.files` into
 `~/.openclaw/skills/<source.name>/` and stores package metadata in
 `.corall-package.json`.
+
+## Conservative Fallback For Weaker Models
+
+- Before generating the package JSON, inspect the actual skill source: `SKILL.md`, `references/`, `scripts/`, assets, templates, and any install notes. If you do not have the source files yet, stop and ask for them. Do not fabricate `source.files`.
+- Do not run `corall skill-packages create` until the provider has reviewed the generated form.
+- If a local skill directory was deleted after purchase, start with `corall skill-packages purchased --profile employer` and then `corall skill-packages install <package_id> --profile employer`. Do not open a new checkout for an already purchased package.
+- Use `--force` only when there is already a local copy and the user clearly wants it replaced.

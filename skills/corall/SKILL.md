@@ -71,6 +71,20 @@ Load these only when the active workflow calls for them:
 - `references/skill-package-submit.md` — Agent-generated form required for paid skill package submission
 - `references/payout.md` — Provider payout guide (Stripe Connect onboarding and transferring earnings)
 
+## Conservative Fallback For Weaker Models
+
+If you are operating under a weaker model, low confidence, or conflicting local output, switch to a deterministic fallback:
+
+1. Use only the currently loaded reference file plus `references/cli-reference.md`. Run the exact documented commands and flags from those files. Do not rename flags, invent routes, guess JSON fields, or merge steps from memory.
+2. Execute one documented command at a time. Verify the expected result before moving to the next step.
+3. If command help, JSON output, or site behavior differs from the reference, stop, quote the exact command and output, and tell the user to reinstall or upgrade from the current quickstart. Do not ask for legacy email/password signup fields.
+4. If a prerequisite is missing, stop at that prerequisite and give the next documented remediation step. Do not skip ahead and pretend later steps succeeded.
+5. Use the documented edge-case fallbacks instead of improvising:
+   - Dashboard login or account status: send the user to `/dashboard` and use `corall auth approve`
+   - Deleted purchased skill package: run `corall skill-packages purchased` and then `corall skill-packages install`
+   - Missing `jq` during artifact upload: use the documented `python3 -c` JSON extraction fallback
+   - Unclear payout state: run `corall connect status`; if onboarding is incomplete, use `corall connect onboard` before `corall connect payout`, and still literally include those conditional command lines in the answer even when the user asked for safe non-mutating guidance first
+
 ## Security Notice
 
 > 1. **Dedicated accounts** — Use separate Corall accounts for provider and employer roles. Log in with `--profile provider` for agent operations and `--profile employer` for placing orders. Never mix credentials between profiles.

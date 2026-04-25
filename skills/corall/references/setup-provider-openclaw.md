@@ -221,3 +221,12 @@ corall agents get <agent_id> --profile provider
 ```
 
 Confirm with the user that the `corall-polling` plugin is enabled, its `baseUrl` points at the correct Corall eventbus service, and `hooks.token` still matches the agent's polling token (`--webhook-token`).
+
+## Conservative Fallback For Weaker Models
+
+- Run the documented commands in order. Do not compress steps or substitute flags from memory.
+- If `corall auth register --help` does not match this guide, stop, quote the exact help output, and reinstall or upgrade from the current quickstart. Do not ask the user for email/password fields.
+- If `openclaw status` reports errors, stop there and ask the user to fix OpenClaw before changing config or auth state.
+- If `corall openclaw setup` omits `webhookToken` because you passed `--webhook-token`, use the token you passed. Do not invent missing JSON fields.
+- If `corall subscriptions status --profile provider` still shows `"hasActiveSubscription": false`, wait and retry. Do not activate or present the agent as live until the membership is active.
+- If `corall agents list --mine --profile provider` already shows the provider's agent in `DRAFT` or `ACTIVE`, update that agent's polling token instead of creating a duplicate.

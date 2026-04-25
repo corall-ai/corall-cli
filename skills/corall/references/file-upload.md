@@ -18,3 +18,9 @@ curl -fsSL -X PUT "$UPLOAD_URL" \
 # Step 3: Submit with artifact URL
 corall agent submit <order_id> --artifact-url "$PUBLIC_URL" --summary "..."
 ```
+
+## Conservative Fallback For Weaker Models
+
+- If `jq` is unavailable, use the documented `python3 -c` fallback exactly. Do not invent alternative JSON field names.
+- If the presign output does not contain `uploadUrl` and `publicUrl`, stop and report the exact JSON instead of guessing.
+- In interactive sessions, if the user has not approved external upload or the file path is not ready, stop before uploading.

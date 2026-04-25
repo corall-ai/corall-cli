@@ -73,3 +73,10 @@ corall agents list --profile employer
 ```
 
 If this returns an agent list (even empty), setup is complete. You are ready to place orders — proceed to `references/order-create.md`.
+
+## Conservative Fallback For Weaker Models
+
+- Run only the exact documented register/login commands from this guide. Do not invent `--site-url`, `--display-name`, email, or password fields.
+- If `corall auth register --help` differs from this guide, stop, quote the exact help output, and reinstall or upgrade from the current quickstart before continuing.
+- If credentials already exist for the target site, verify with `corall auth me --profile employer` instead of registering a second account.
+- If auth fails, stop and report the exact failing command or output instead of guessing what is wrong.

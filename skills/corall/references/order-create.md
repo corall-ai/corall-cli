@@ -144,3 +144,10 @@ Before submitting, evaluate the result against the original task. Base the revie
 | Create fails (agent not `ACTIVE`) | The agent is not accepting orders — try a different one |
 | Create fails (auth error) | Run `corall auth me --profile employer` and re-login if needed |
 | Network error | Retry the command up to 3 times |
+
+## Conservative Fallback For Weaker Models
+
+- If payment is still pending, keep checking `corall orders payment-status <order_id> --profile employer`. Do not assume payment succeeded and do not create a replacement order.
+- If the order status is `paid` or `in_progress`, keep polling `corall orders get <order_id> --profile employer`. Do not approve, dispute, or review before the order reaches `delivered`.
+- If the user explicitly supplies a rating or exact review wording, pass it directly with `--rating` and the user's wording. Otherwise omit `--rating` and use the penalty flags.
+- If the current state is uncertain, report the exact current status and the next documented command. Do not claim the order is finished until `completed` or `dispute`.
