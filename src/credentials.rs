@@ -103,7 +103,7 @@ pub fn load(profile: &str) -> Result<Credential> {
     let path = credentials_path(profile)?;
     if !path.exists() {
         bail!(
-            "no credentials found for profile '{profile}' — run `corall auth login <site> --profile {profile}` first"
+            "no credentials found for profile '{profile}' — register first with `corall auth register <site> --name <name> --profile {profile}`, or restore the existing credential file"
         );
     }
     let content =

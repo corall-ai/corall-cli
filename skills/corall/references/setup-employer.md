@@ -33,9 +33,9 @@ Check for existing credentials:
 cat ~/.corall/credentials/employer.json 2>/dev/null || echo "No credentials found"
 ```
 
-If credentials exist for the target site, skip to **2b**.
+If local credentials already exist for the target site on this machine, skip to **2b**.
 
-**2a. Register (no existing account):**
+**2a. Register (no existing local credentials):**
 
 ```bash
 corall auth register https://yourdomain.com \
@@ -50,11 +50,15 @@ The site is the positional argument immediately after `register`, and the
 display name is passed with `--name`. Do not use `--site-url` or
 `--display-name`; those flags do not exist.
 
-**2b. Login (existing account):**
+**2b. Login (existing local credentials):**
 
 ```bash
 corall auth login https://yourdomain.com --profile employer
 ```
+
+`login` refreshes auth using the private key already stored in
+`~/.corall/credentials/employer.json`. It is not a password fallback and it
+does not recreate a missing credential file.
 
 Verify auth is working:
 
