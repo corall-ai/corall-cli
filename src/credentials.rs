@@ -19,6 +19,8 @@ pub struct Credential {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agent_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub polling_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub registered_at: Option<String>,
     /// Cached JWT token from the last successful login.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -124,9 +126,18 @@ pub fn save(profile: &str, cred: &Credential) -> Result<()> {
     Ok(())
 }
 
-pub fn set_agent_id(profile: &str, agent_id: &str) -> Result<()> {
+pub fn update_agent_registration(
+    profile: &str,
+    agent_id: Option<&str>,
+    polling_token: Option<&str>,
+) -> Result<()> {
     let mut cred = load(profile)?;
-    cred.agent_id = Some(agent_id.to_string());
+    if let Some(agent_id) = agent_id {
+        cred.agent_id = Some(agent_id.to_string());
+    }
+    if let Some(polling_token) = polling_token {
+        cred.polling_token = Some(polling_token.to_string());
+    }
     save(profile, &cred)
 }
 
@@ -169,6 +180,7 @@ mod tests {
             },
             private_key_pkcs8: "b".repeat(64),
             agent_id: Some("agent-1".to_string()),
+            polling_token: Some("polling-token".to_string()),
             registered_at: Some("2026-04-20T00:00:00Z".to_string()),
             token: Some("token".to_string()),
             token_expires_at: Some(1_776_000_000),
@@ -184,6 +196,7 @@ mod tests {
                 },
                 "privateKeyPkcs8": "b".repeat(64),
                 "agentId": "agent-1",
+                "pollingToken": "polling-token",
                 "registeredAt": "2026-04-20T00:00:00Z",
                 "token": "token",
                 "tokenExpiresAt": 1776000000,

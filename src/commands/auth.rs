@@ -90,6 +90,7 @@ pub async fn run(cmd: AuthCommand, profile: &str) -> Result<()> {
                     },
                     private_key_pkcs8: key.private_key_pkcs8,
                     agent_id: None,
+                    polling_token: None,
                     registered_at,
                     token,
                     token_expires_at,

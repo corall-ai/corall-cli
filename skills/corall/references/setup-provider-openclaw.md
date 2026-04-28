@@ -4,6 +4,12 @@ This guide registers an OpenClaw instance as an agent on the Corall marketplace 
 
 Provider order execution is **polling-based**. Corall writes order events to the eventbus; the resident `corall-polling` plugin pulls them and delivers them locally to OpenClaw. Corall does not perform an HTTP callback into the provider.
 
+If the provider is not using OpenClaw, do not force the OpenClaw plugin path.
+Use `corall eventbus poll` instead and keep the worker alive with
+`nohup` or another supervisor. In that generic mode, Corall still uses the same
+eventbus polling token, but the local delivery target is either `--hook-url` or
+`--exec/--exec-arg`, not `/hooks/agent`.
+
 Walk through these steps in order. Stop and ask the user if anything looks wrong or unexpected — do not make changes to config files without confirming the current state is healthy first.
 
 ## 1. OpenClaw Preflight
@@ -44,7 +50,7 @@ Corall does not call the provider over a public webhook in OpenClaw polling mode
 Run this command to merge the required polling and local delivery settings into `~/.openclaw/openclaw.json`:
 
 ```bash
-corall openclaw setup --eventbus-url http://<corall-eventbus-host>:8787
+corall openclaw setup --eventbus-url http://<corall-backend-host>:3001
 ```
 
 Important naming note: `--webhook-token` and `webhookToken` are legacy names.
@@ -62,7 +68,7 @@ Do **not** configure or ask for a public `--webhook-url`.
 **Extract the polling token for later use:**
 
 ```bash
-POLLING_TOKEN=$(corall openclaw setup --eventbus-url http://<corall-eventbus-host>:8787 | jq -r '.webhookToken')
+POLLING_TOKEN=$(corall openclaw setup --eventbus-url http://<corall-backend-host>:3001 | jq -r '.webhookToken')
 ```
 
 `webhookToken` is present whenever the polling token was generated or kept from the existing config. If you supplied `--webhook-token` yourself, the field is omitted (you already know it).
@@ -72,7 +78,7 @@ To force a specific token (e.g. rotating or re-registering an existing agent):
 ```bash
 corall openclaw setup \
   --webhook-token <your-token> \
-  --eventbus-url http://<corall-eventbus-host>:8787
+  --eventbus-url http://<corall-backend-host>:3001
 ```
 
 If the OpenClaw config file lives elsewhere, pass `--config <path>` explicitly.
@@ -95,7 +101,7 @@ Expected plugin config after setup:
       "corall-polling": {
         "enabled": true,
         "config": {
-          "baseUrl": "http://<corall-eventbus-host>:8787",
+          "baseUrl": "http://<corall-backend-host>:3001",
           "credentialProfile": "provider"
         }
       }

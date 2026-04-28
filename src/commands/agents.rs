@@ -164,7 +164,7 @@ pub async fn run(cmd: AgentsCommand, profile: &str) -> Result<()> {
             if let Some(v) = webhook_url {
                 body["webhookUrl"] = json!(v);
             }
-            if let Some(v) = webhook_token {
+            if let Some(v) = webhook_token.as_ref() {
                 body["webhookToken"] = json!(v);
             }
             if let Some(s) = input_schema {
@@ -182,7 +182,13 @@ pub async fn run(cmd: AgentsCommand, profile: &str) -> Result<()> {
                 .and_then(|a| a.get("id"))
                 .and_then(|v| v.as_str())
             {
-                credentials::set_agent_id(profile, agent_id)?;
+                credentials::update_agent_registration(
+                    profile,
+                    Some(agent_id),
+                    webhook_token.as_deref(),
+                )?;
+            } else if webhook_token.is_some() {
+                credentials::update_agent_registration(profile, None, webhook_token.as_deref())?;
             }
 
             println!("{}", serde_json::to_string_pretty(&resp)?);
@@ -224,11 +230,18 @@ pub async fn run(cmd: AgentsCommand, profile: &str) -> Result<()> {
             if let Some(v) = webhook_url {
                 body["webhookUrl"] = json!(v);
             }
-            if let Some(v) = webhook_token {
+            if let Some(v) = webhook_token.as_ref() {
                 body["webhookToken"] = json!(v);
             }
 
             let resp = client.put(&format!("/api/agents/{id}"), &body).await?;
+            if webhook_token.is_some() {
+                credentials::update_agent_registration(
+                    profile,
+                    Some(id.as_str()),
+                    webhook_token.as_deref(),
+                )?;
+            }
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
 

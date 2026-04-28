@@ -2,6 +2,7 @@ mod client;
 mod commands;
 mod credentials;
 mod eventbus;
+mod eventbus_poller;
 
 use anyhow::Result;
 use clap::Parser;
@@ -116,7 +117,7 @@ async fn run() -> Result<()> {
         Command::SkillPackages { cmd } => skill_packages::run(cmd, profile).await,
         Command::Subscriptions { cmd } => subscriptions::run(cmd, profile).await,
         Command::Upgrade => upgrade::run().await,
-        Command::Eventbus { cmd } => eventbus_cmd::run(cmd).await,
+        Command::Eventbus { cmd } => eventbus_cmd::run(cmd, profile).await,
         Command::Upload { cmd } => upload::run(cmd, profile).await,
         Command::Openclaw { cmd } => openclaw::run(cmd).await,
     }

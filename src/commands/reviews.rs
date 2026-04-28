@@ -35,7 +35,7 @@ pub enum ReviewsCommand {
     Create {
         order_id: String,
         /// Explicit rating from 0.0 to 5.0. Omit this to use penalty-based scoring.
-        #[arg(long)]
+        #[arg(long, value_parser = parse_rating)]
         rating: Option<f64>,
         #[arg(long)]
         comment: Option<String>,
@@ -43,22 +43,22 @@ pub enum ReviewsCommand {
         #[arg(long, value_enum, default_value_t = ReviewerKindArg::Human)]
         reviewer_kind: ReviewerKindArg,
         /// Penalty severity for unmet requirements (0-3)
-        #[arg(long, default_value_t = 0)]
+        #[arg(long, default_value_t = 0, value_parser = parse_penalty)]
         requirement_miss: u8,
         /// Penalty severity for correctness defects (0-3)
-        #[arg(long, default_value_t = 0)]
+        #[arg(long, default_value_t = 0, value_parser = parse_penalty)]
         correctness_defect: u8,
         /// Penalty severity for avoidable rework (0-3)
-        #[arg(long, default_value_t = 0)]
+        #[arg(long, default_value_t = 0, value_parser = parse_penalty)]
         rework_burden: u8,
         /// Penalty severity for delivery timeliness misses (0-3)
-        #[arg(long, default_value_t = 0)]
+        #[arg(long, default_value_t = 0, value_parser = parse_penalty)]
         timeliness_miss: u8,
         /// Penalty severity for communication friction (0-3)
-        #[arg(long, default_value_t = 0)]
+        #[arg(long, default_value_t = 0, value_parser = parse_penalty)]
         communication_friction: u8,
         /// Penalty severity for safety or policy risk (0-3)
-        #[arg(long, default_value_t = 0)]
+        #[arg(long, default_value_t = 0, value_parser = parse_penalty)]
         safety_risk: u8,
     },
 }
@@ -133,9 +133,6 @@ fn build_review_request(
 
     if let Some(rating) = rating {
         body["rating"] = json!(rating);
-        if penalties != PenaltyArgs::default() {
-            body["penalties"] = json!(penalties_json(penalties));
-        }
     } else {
         body["penalties"] = json!(penalties_json(penalties));
     }
@@ -158,6 +155,28 @@ fn penalties_json(penalties: PenaltyArgs) -> Value {
     })
 }
 
+fn parse_rating(raw: &str) -> std::result::Result<f64, String> {
+    let rating = raw
+        .parse::<f64>()
+        .map_err(|_| format!("invalid rating `{raw}`"))?;
+    if (0.0..=5.0).contains(&rating) {
+        Ok(rating)
+    } else {
+        Err("rating must be between 0.0 and 5.0".to_string())
+    }
+}
+
+fn parse_penalty(raw: &str) -> std::result::Result<u8, String> {
+    let penalty = raw
+        .parse::<u8>()
+        .map_err(|_| format!("invalid penalty `{raw}`"))?;
+    if penalty <= 3 {
+        Ok(penalty)
+    } else {
+        Err("penalty values must be between 0 and 3".to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
@@ -165,6 +184,8 @@ mod tests {
     use super::PenaltyArgs;
     use super::ReviewerKindArg;
     use super::build_review_request;
+    use super::parse_penalty;
+    use super::parse_rating;
 
     #[test]
     fn manual_rating_bypasses_penalty_scoring() {
@@ -185,7 +206,7 @@ mod tests {
 
         assert_eq!(body["rating"], 4.7);
         assert_eq!(body["reviewerKind"], "human");
-        assert_eq!(body["penalties"]["requirementMiss"], 3);
+        assert!(body.get("penalties").is_none());
     }
 
     #[test]
@@ -218,5 +239,25 @@ mod tests {
             })
         );
         assert!(body.get("rating").is_none());
+    }
+
+    #[test]
+    fn parse_rating_rejects_out_of_range_values() {
+        assert_eq!(parse_rating("0.0").unwrap(), 0.0);
+        assert_eq!(parse_rating("5.0").unwrap(), 5.0);
+        assert_eq!(
+            parse_rating("5.1").unwrap_err(),
+            "rating must be between 0.0 and 5.0"
+        );
+    }
+
+    #[test]
+    fn parse_penalty_rejects_out_of_range_values() {
+        assert_eq!(parse_penalty("0").unwrap(), 0);
+        assert_eq!(parse_penalty("3").unwrap(), 3);
+        assert_eq!(
+            parse_penalty("4").unwrap_err(),
+            "penalty values must be between 0 and 3"
+        );
     }
 }

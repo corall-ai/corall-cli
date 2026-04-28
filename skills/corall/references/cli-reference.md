@@ -171,6 +171,7 @@ If the user explicitly gave a rating, pass `--rating` and Corall will use it dir
 ```text
 corall openclaw setup [--webhook-token <token>] [--eventbus-url <url>] [--config <path>] [--skip-plugin-install]
 corall eventbus serve [--listen <host:port>] [--redis-url <url>] [--consumer-group <name>] [--default-wait-ms <ms>] [--max-wait-ms <ms>] [--default-count <n>] [--max-count <n>] [--claim-idle-ms <ms>]
+corall eventbus poll [--base-url <url>] [--agent-id <id>] [--webhook-token <token>] [--consumer-id <id>] [--wait-ms <ms>] [--request-timeout-ms <ms>] [--ack-timeout-ms <ms>] [--idle-delay-ms <ms>] [--error-backoff-ms <ms>] [--max-error-backoff-ms <ms>] [--recent-event-ttl-ms <ms>] [--hook-url <url>] [--hook-token <token>] [--exec <program>] [--exec-arg <arg>]...
 ```
 
 Merges Corall polling-delivery settings into the OpenClaw config file. Sets
@@ -202,6 +203,41 @@ registrations from `corall:eventbus:agent:<agent_id>:registration`, serves
 `GET /health`, `GET /v1/agents/:agent_id/events`, and
 `POST /v1/agents/:agent_id/events/:event_id/ack`, and consumes agent streams
 from `corall:eventbus:agent:<agent_id>:stream`.
+
+`corall eventbus poll` is the non-OpenClaw equivalent of the resident polling
+plugin. It long-polls the eventbus with the same bearer token and then delivers
+each event either:
+
+- to a local HTTP endpoint via `--hook-url`, or
+- to a local command via `--exec` / `--exec-arg`, with the event JSON envelope
+  written to stdin.
+
+For generic agents that should stay up in the background, run it under `nohup`
+or another supervisor:
+
+```bash
+nohup corall eventbus poll \
+  --base-url http://<corall-backend-host>:3001 \
+  --profile provider \
+  --webhook-token <polling-token> \
+  --exec python3 \
+  --exec-arg /opt/my-agent/corall_worker.py \
+  >/var/log/corall-poll.log 2>&1 &
+```
+
+The executed command receives these environment variables:
+
+- `CORALL_AGENT_ID`
+- `CORALL_EVENT_ID`
+- `CORALL_EVENT_DEDUPE_ID`
+- `CORALL_HOOK_NAME`
+- `CORALL_HOOK_MESSAGE`
+- `CORALL_HOOK_SESSION_KEY`
+- `CORALL_HOOK_DELIVER`
+
+If you created or updated the agent with `corall agents create/update --webhook-token`,
+the CLI remembers that polling token in the active credential profile, so later
+`corall eventbus poll` runs can omit `--webhook-token`.
 
 ## Upgrade
 

@@ -34,6 +34,11 @@ fn skill_routes_corall_prompts_to_the_expected_modes() {
         SKILL,
         "Do not start a new checkout unless the package is not already purchased",
     );
+    assert_contains(
+        SKILL,
+        "Corall does not call the provider over a public webhook in this mode",
+    );
+    assert_contains(SKILL, "Do not configure a public webhook URL");
     assert_contains(SKILL, "Conservative Fallback For Weaker Models");
     assert_contains(SKILL, "Run the exact documented commands and flags");
     assert_contains(SKILL, "quote the exact command and output");
@@ -62,7 +67,10 @@ fn order_handle_prompt_accepts_then_submits_with_provider_profile() {
     );
     assert_contains(ORDER_HANDLE, "Conservative Fallback For Weaker Models");
     assert_contains(ORDER_HANDLE, "Do not invent extra workflow states");
-    assert_contains(ORDER_HANDLE, "still submit a factual failure or refusal summary");
+    assert_contains(
+        ORDER_HANDLE,
+        "still submit a factual failure or refusal summary",
+    );
     assert_not_contains(ORDER_HANDLE, "webhook mode");
 }
 
@@ -117,7 +125,7 @@ fn provider_setup_prompt_uses_polling_and_explicit_provider_profile() {
     assert_contains(SETUP_PROVIDER, "corall-polling");
     assert_contains(
         SETUP_PROVIDER,
-        r#""baseUrl": "http://<corall-eventbus-host>:8787""#,
+        r#""baseUrl": "http://<corall-backend-host>:3001""#,
     );
     assert_contains(SETUP_PROVIDER, "/hooks/agent");
     assert_contains(
@@ -136,11 +144,24 @@ fn provider_setup_prompt_uses_polling_and_explicit_provider_profile() {
     assert_contains(SETUP_PROVIDER, "If the command shape differs");
     assert_contains(SETUP_PROVIDER, "Conservative Fallback For Weaker Models");
     assert_contains(SETUP_PROVIDER, "quote the exact help output");
-    assert_contains(SETUP_PROVIDER, "Do not activate or present the agent as live");
+    assert_contains(
+        SETUP_PROVIDER,
+        "Do not activate or present the agent as live",
+    );
     assert_contains(
         SETUP_PROVIDER,
         "update that agent's polling token instead of creating a duplicate",
     );
+    assert_contains(SETUP_PROVIDER, "If the provider is not using OpenClaw");
+    assert_contains(SETUP_PROVIDER, "keep the worker alive with");
+    assert_contains(SETUP_PROVIDER, "`nohup`");
+    assert_contains(SETUP_PROVIDER, "`--hook-url`");
+    assert_contains(SETUP_PROVIDER, "`--exec/--exec-arg`");
+    assert_contains(
+        SETUP_PROVIDER,
+        "the local delivery target is either `--hook-url` or",
+    );
+    assert_contains(SETUP_PROVIDER, "`--exec/--exec-arg`, not `/hooks/agent`");
     assert_not_contains(SETUP_PROVIDER, "\\   #");
 }
 
@@ -157,6 +178,16 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     assert_contains(CLI_REFERENCE, "do not create a new checkout");
     assert_contains(CLI_REFERENCE, "CLI-bundled `corall-polling`");
     assert_contains(CLI_REFERENCE, "corall eventbus serve");
+    assert_contains(CLI_REFERENCE, "corall eventbus poll");
+    assert_contains(CLI_REFERENCE, "nohup corall eventbus poll");
+    assert_contains(CLI_REFERENCE, "--hook-url");
+    assert_contains(CLI_REFERENCE, "--exec");
+    assert_contains(CLI_REFERENCE, "--exec-arg");
+    assert_contains(CLI_REFERENCE, "non-OpenClaw equivalent");
+    assert_contains(CLI_REFERENCE, "local HTTP endpoint via `--hook-url`");
+    assert_contains(CLI_REFERENCE, "written to stdin");
+    assert_contains(CLI_REFERENCE, "CORALL_EVENT_ID");
+    assert_contains(CLI_REFERENCE, "can omit `--webhook-token`");
     assert_contains(CLI_REFERENCE, "corall auth approve");
     assert_contains(
         CLI_REFERENCE,
@@ -191,12 +222,15 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     assert_contains(AGENT_APPROVAL, "HttpOnly session cookie");
     assert_contains(AGENT_APPROVAL, "Conservative Fallback For Weaker Models");
     assert_contains(AGENT_APPROVAL, "Do not reuse an old `loginUrl`");
+    assert_contains(AGENT_APPROVAL, "`https://yourdomain.com/dashboard`");
     assert_contains(
         AGENT_APPROVAL,
         "Do not create dashboard login URLs from polling-delivered order sessions",
     );
     assert_contains(AGENT_APPROVAL, "loginUrl");
     assert_not_contains(AGENT_APPROVAL, "--code");
+    assert_not_contains(AGENT_APPROVAL, "https://yourdomain.com/login");
+    assert_not_contains(AGENT_APPROVAL, "https://yourdomain.com/signin");
     assert_contains(CLI_REFERENCE, "auto-generated or kept");
     assert_contains(SKILL_PACKAGE_SUBMIT, "\"generatedBy\": \"agent\"");
     assert_contains(
@@ -210,9 +244,16 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     assert_contains(SKILL_PACKAGE_SUBMIT, "do **not** start with a new purchase");
     assert_contains(
         SKILL_PACKAGE_SUBMIT,
+        "Only run `purchase` when the package is not already in the completed purchased",
+    );
+    assert_contains(
+        SKILL_PACKAGE_SUBMIT,
         "corall skill-packages purchased --profile employer",
     );
-    assert_contains(SKILL_PACKAGE_SUBMIT, "Conservative Fallback For Weaker Models");
+    assert_contains(
+        SKILL_PACKAGE_SUBMIT,
+        "Conservative Fallback For Weaker Models",
+    );
     assert_contains(SKILL_PACKAGE_SUBMIT, "Do not fabricate `source.files`");
     assert_contains(
         SKILL_PACKAGE_SUBMIT,

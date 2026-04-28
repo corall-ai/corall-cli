@@ -84,6 +84,9 @@ fn agent_ed25519_approval_signs_challenge_without_leaking_secrets() -> Result<()
     let approve_stdout = String::from_utf8(approve.stdout)?;
     assert!(approve_stdout.contains(r#""approved": true"#));
     assert!(approve_stdout.contains("loginUrl"));
+    assert!(approve_stdout.contains("/dashboard?agentApproval="));
+    assert!(!approve_stdout.contains("/login"));
+    assert!(!approve_stdout.contains("/signin"));
     assert!(!approve_stdout.contains("token"));
     assert!(!approve_stdout.contains("privateKeyPkcs8"));
     assert!(!approve_stdout.contains("signature"));
