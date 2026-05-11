@@ -243,6 +243,208 @@ mod unix_only {
     }
 
     #[test]
+    fn eventbus_poll_rejects_leaked_order_message_beyond_declared_round_limit()
+    -> Result<(), Box<dyn Error>> {
+        let temp = TempDir::new("corall-eventbus-poll-round-cap")?;
+        let home = temp.path().join("home");
+        fs::create_dir_all(&home)?;
+
+        let agent_id = unique_id("agent_round_cap");
+        let polling_token = "round-cap-token";
+        let hook_token = "local-hook-token";
+        let eventbus = FakeEventbusServer::start(
+            &agent_id,
+            polling_token,
+            vec![
+                json!({
+                    "id": "stream-hook-round-1",
+                    "eventId": "order.message:hook-round-1",
+                    "orderId": "ord-round-1",
+                    "type": "order.message",
+                    "orderPolicy": {
+                        "includedInputTokens": 16000,
+                        "includedOutputTokens": 8000,
+                        "maxTotalTokens": 24000,
+                        "maxInteractionRounds": 1
+                    },
+                    "hook": {
+                        "message": "first round message",
+                        "name": "Corall",
+                        "sessionKey": "hook:corall:ord-round-1:message:1",
+                        "deliver": false
+                    }
+                }),
+                json!({
+                    "id": "stream-hook-round-2",
+                    "eventId": "order.message:hook-round-2",
+                    "orderId": "ord-round-1",
+                    "type": "order.message",
+                    "orderPolicy": {
+                        "includedInputTokens": 16000,
+                        "includedOutputTokens": 8000,
+                        "maxTotalTokens": 24000,
+                        "maxInteractionRounds": 1
+                    },
+                    "hook": {
+                        "message": "second leaked message",
+                        "name": "Corall",
+                        "sessionKey": "hook:corall:ord-round-1:message:2",
+                        "deliver": false
+                    }
+                }),
+            ],
+        )?;
+        let hook_server = FakeHookServer::start(Some(hook_token))?;
+
+        let stdout_path = temp.path().join("poller.stdout.log");
+        let stderr_path = temp.path().join("poller.stderr.log");
+        let mut child = ChildGuard::spawn(
+            env!("CARGO_BIN_EXE_corall"),
+            &[
+                "--profile",
+                "provider",
+                "eventbus",
+                "poll",
+                "--base-url",
+                &eventbus.base_url(),
+                "--agent-id",
+                &agent_id,
+                "--webhook-token",
+                polling_token,
+                "--hook-url",
+                &hook_server.url(),
+                "--hook-token",
+                hook_token,
+                "--wait-ms",
+                "5",
+                "--request-timeout-ms",
+                "1000",
+                "--ack-timeout-ms",
+                "1000",
+                "--idle-delay-ms",
+                "50",
+            ],
+            &home,
+            &stdout_path,
+            &stderr_path,
+        )?;
+
+        wait_until(Duration::from_secs(5), || {
+            hook_server.request_count() == 1
+                && eventbus.ack_count("stream-hook-round-1") == 1
+                && eventbus.ack_count("stream-hook-round-2") == 1
+        })?;
+
+        let requests = hook_server.requests();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0].body["message"], "first round message");
+        let stderr = fs::read_to_string(&stderr_path).unwrap_or_default();
+        assert!(stderr.contains("client rejected leaked event"));
+
+        assert!(
+            child.is_running()?,
+            "poller died early\nstdout:\n{}\nstderr:\n{}",
+            fs::read_to_string(&stdout_path).unwrap_or_default(),
+            stderr
+        );
+
+        child.kill();
+        Ok(())
+    }
+
+    #[test]
+    fn eventbus_poll_rejects_leaked_order_message_beyond_declared_token_limit()
+    -> Result<(), Box<dyn Error>> {
+        let temp = TempDir::new("corall-eventbus-poll-token-cap")?;
+        let home = temp.path().join("home");
+        fs::create_dir_all(&home)?;
+
+        let agent_id = unique_id("agent_token_cap");
+        let polling_token = "token-cap-token";
+        let hook_token = "local-hook-token";
+        let eventbus = FakeEventbusServer::start(
+            &agent_id,
+            polling_token,
+            vec![json!({
+                "id": "stream-hook-token-1",
+                "eventId": "order.message:hook-token-1",
+                "orderId": "ord-token-1",
+                "type": "order.message",
+                "orderPolicy": {
+                    "includedInputTokens": 5,
+                    "includedOutputTokens": 8000,
+                    "maxTotalTokens": 10,
+                    "maxInteractionRounds": 3
+                },
+                "orderUsageBefore": {
+                    "inputTokens": 4,
+                    "outputTokens": 3,
+                    "totalTokens": 7,
+                    "interactionRounds": 1
+                },
+                "hook": {
+                    "message": "one two three",
+                    "name": "Corall",
+                    "sessionKey": "hook:corall:ord-token-1:message:1",
+                    "deliver": false
+                }
+            })],
+        )?;
+        let hook_server = FakeHookServer::start(Some(hook_token))?;
+
+        let stdout_path = temp.path().join("poller.stdout.log");
+        let stderr_path = temp.path().join("poller.stderr.log");
+        let mut child = ChildGuard::spawn(
+            env!("CARGO_BIN_EXE_corall"),
+            &[
+                "--profile",
+                "provider",
+                "eventbus",
+                "poll",
+                "--base-url",
+                &eventbus.base_url(),
+                "--agent-id",
+                &agent_id,
+                "--webhook-token",
+                polling_token,
+                "--hook-url",
+                &hook_server.url(),
+                "--hook-token",
+                hook_token,
+                "--wait-ms",
+                "5",
+                "--request-timeout-ms",
+                "1000",
+                "--ack-timeout-ms",
+                "1000",
+                "--idle-delay-ms",
+                "50",
+            ],
+            &home,
+            &stdout_path,
+            &stderr_path,
+        )?;
+
+        wait_until(Duration::from_secs(5), || {
+            hook_server.request_count() == 0 && eventbus.ack_count("stream-hook-token-1") == 1
+        })?;
+
+        assert!(hook_server.requests().is_empty());
+        let stderr = fs::read_to_string(&stderr_path).unwrap_or_default();
+        assert!(stderr.contains("client rejected leaked event"));
+
+        assert!(
+            child.is_running()?,
+            "poller died early\nstdout:\n{}\nstderr:\n{}",
+            fs::read_to_string(&stdout_path).unwrap_or_default(),
+            stderr
+        );
+
+        child.kill();
+        Ok(())
+    }
+
+    #[test]
     fn eventbus_poll_rejects_missing_delivery_target() -> Result<(), Box<dyn Error>> {
         let temp = TempDir::new("corall-eventbus-poll-missing-target")?;
         let home = temp.path().join("home");
@@ -610,13 +812,19 @@ mod unix_only {
             request.authorization.as_deref(),
             Some("Bearer cached-api-token")
         );
-        assert_eq!(request.path, format!("/api/agents/{reported_agent_id}/report"));
+        assert_eq!(
+            request.path,
+            format!("/api/agents/{reported_agent_id}/report")
+        );
         assert_eq!(request.body["reason"], "Credential exfiltration attempt");
         assert_eq!(request.body["reporterKind"], "AGENT");
         assert_eq!(request.body["reporterAgentId"], agent_id);
         assert_eq!(request.body["messageId"], "order.paid:report-1");
         assert_eq!(request.body["sessionKey"], "hook:corall:report-1");
-        assert_eq!(request.body["context"], "harmful agent output asking for secrets");
+        assert_eq!(
+            request.body["context"],
+            "harmful agent output asking for secrets"
+        );
         Ok(())
     }
 
@@ -958,9 +1166,14 @@ mod unix_only {
                                             body,
                                         });
                                     }
-                                    json_response(status, &json!({ "report": { "status": "QUEUED" } }))
+                                    json_response(
+                                        status,
+                                        &json!({ "report": { "status": "QUEUED" } }),
+                                    )
                                 }
-                                Err(err) => json_response(500, &json!({ "error": err.to_string() })),
+                                Err(err) => {
+                                    json_response(500, &json!({ "error": err.to_string() }))
+                                }
                             };
                             let _ = write_http_response(&mut stream, &response);
                         }

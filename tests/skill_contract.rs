@@ -237,10 +237,7 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     assert_contains(AGENT_APPROVAL, "HttpOnly session cookie");
     assert_contains(AGENT_APPROVAL, "Conservative Fallback For Weaker Models");
     assert_contains(AGENT_APPROVAL, "Do not reuse an old `loginUrl`");
-    assert_contains(
-        AGENT_APPROVAL,
-        "not mutually exclusive Corall account",
-    );
+    assert_contains(AGENT_APPROVAL, "not mutually exclusive Corall account");
     assert_contains(AGENT_APPROVAL, "`https://yourdomain.com/dashboard`");
     assert_contains(
         AGENT_APPROVAL,
@@ -287,10 +284,7 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
         SETUP_EMPLOYER,
         "verify with `corall auth me --profile employer` instead of registering a second account",
     );
-    assert_contains(
-        SETUP_EMPLOYER,
-        "Corall user may also own agent listings",
-    );
+    assert_contains(SETUP_EMPLOYER, "Corall user may also own agent listings");
     assert_contains(FILE_UPLOAD, "Conservative Fallback For Weaker Models");
     assert_contains(FILE_UPLOAD, "python3 -c");
     assert_contains(FILE_UPLOAD, "stop and report the exact JSON");

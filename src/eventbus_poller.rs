@@ -80,7 +80,29 @@ struct PollingEvent {
     id: String,
     #[serde(rename = "dedupeId")]
     dedupe_id: String,
+    order_id: Option<String>,
+    event_type: Option<String>,
+    order_policy: Option<OrderPolicy>,
+    order_usage_before: Option<OrderUsage>,
     hook: HookPayload,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct OrderPolicy {
+    included_input_tokens: i32,
+    included_output_tokens: i32,
+    max_total_tokens: i32,
+    max_interaction_rounds: i32,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct OrderUsage {
+    input_tokens: i32,
+    output_tokens: i32,
+    total_tokens: i32,
+    interaction_rounds: i32,
 }
 
 pub async fn run(options: EventbusPollOptions, profile: &str) -> Result<()> {
@@ -305,18 +327,79 @@ async fn handle_event(
 ) -> Result<()> {
     let already_forwarded = recent_events.contains_key(&event.dedupe_id);
     if !already_forwarded {
-        crate::transcripts::store(
-            &config.agent_id,
-            &event.id,
-            &event.dedupe_id,
-            &event.hook.session_key,
-            &event.hook.name,
-            &event.hook.message,
-        )?;
+        if should_reject_event_locally(config, event)? {
+            eprintln!(
+                "{}",
+                json!({
+                    "warning": "client rejected leaked event that exceeded declared order limits",
+                    "eventId": event.id,
+                    "orderId": event.order_id,
+                })
+            );
+            recent_events.insert(event.dedupe_id.clone(), Instant::now());
+            return ack_event(client, config, &event.id).await;
+        }
+        crate::transcripts::store(crate::transcripts::TranscriptMetadata {
+            agent_id: &config.agent_id,
+            event_id: &event.id,
+            message_id: &event.dedupe_id,
+            session_key: &event.hook.session_key,
+            order_id: event.order_id.as_deref(),
+            event_type: event.event_type.as_deref(),
+            hook_name: &event.hook.name,
+            message: &event.hook.message,
+        })?;
         deliver_event(client, config, event).await?;
         recent_events.insert(event.dedupe_id.clone(), Instant::now());
     }
     ack_event(client, config, &event.id).await
+}
+
+fn should_reject_event_locally(config: &ResolvedPollOptions, event: &PollingEvent) -> Result<bool> {
+    let Some(order_policy) = &event.order_policy else {
+        return Ok(false);
+    };
+    if event.event_type.as_deref() != Some("order.message") {
+        return Ok(false);
+    }
+    let Some(order_id) = event.order_id.as_deref() else {
+        return Ok(false);
+    };
+
+    let usage = crate::transcripts::summarize_order_messages(&config.agent_id, order_id)?;
+    let snapshot = event
+        .order_usage_before
+        .as_ref()
+        .cloned()
+        .unwrap_or(OrderUsage {
+            input_tokens: 0,
+            output_tokens: 0,
+            total_tokens: 0,
+            interaction_rounds: 0,
+        });
+    let input_tokens_before = usage.input_tokens.max(snapshot.input_tokens);
+    let interaction_rounds_before = usage.interaction_rounds.max(snapshot.interaction_rounds);
+    let total_tokens_before = snapshot
+        .total_tokens
+        .max(input_tokens_before.saturating_add(snapshot.output_tokens));
+
+    if interaction_rounds_before >= order_policy.max_interaction_rounds {
+        return Ok(true);
+    }
+    let normalized = event.hook.message.replace("\r\n", "\n");
+    let event_tokens = i32::try_from(
+        tiktoken_rs::cl100k_base()
+            .map(|bpe| bpe.encode_ordinary(&normalized).len())
+            .unwrap_or_else(|_| normalized.split_whitespace().count()),
+    )
+    .unwrap_or(i32::MAX);
+    if input_tokens_before.saturating_add(event_tokens) > order_policy.included_input_tokens {
+        return Ok(true);
+    }
+    if total_tokens_before.saturating_add(event_tokens) > order_policy.max_total_tokens {
+        return Ok(true);
+    }
+    Ok(false)
 }
 
 async fn deliver_event(
@@ -445,6 +528,16 @@ fn normalize_event(value: &Value) -> Option<PollingEvent> {
     Some(PollingEvent {
         id,
         dedupe_id,
+        order_id: first_string(object, &["orderId", "order_id"]),
+        event_type: first_string(object, &["type", "eventType", "event_type"]),
+        order_policy: object
+            .get("orderPolicy")
+            .cloned()
+            .and_then(|value| serde_json::from_value::<OrderPolicy>(value).ok()),
+        order_usage_before: object
+            .get("orderUsageBefore")
+            .cloned()
+            .and_then(|value| serde_json::from_value::<OrderUsage>(value).ok()),
         hook,
     })
 }
@@ -475,6 +568,20 @@ mod tests {
         let event = normalize_event(&json!({
             "streamId": "stream-1",
             "eventId": "order.paid:1",
+            "orderId": "ord-1",
+            "type": "order.paid",
+            "orderPolicy": {
+                "includedInputTokens": 16000,
+                "includedOutputTokens": 8000,
+                "maxTotalTokens": 24000,
+                "maxInteractionRounds": 3
+            },
+            "orderUsageBefore": {
+                "inputTokens": 4,
+                "outputTokens": 2,
+                "totalTokens": 6,
+                "interactionRounds": 1
+            },
             "hook": {
                 "message": "paid",
                 "name": "Corall",
@@ -486,6 +593,26 @@ mod tests {
 
         assert_eq!(event.id, "stream-1");
         assert_eq!(event.dedupe_id, "order.paid:1");
+        assert_eq!(event.order_id.as_deref(), Some("ord-1"));
+        assert_eq!(event.event_type.as_deref(), Some("order.paid"));
+        assert_eq!(
+            event.order_policy,
+            Some(OrderPolicy {
+                included_input_tokens: 16_000,
+                included_output_tokens: 8_000,
+                max_total_tokens: 24_000,
+                max_interaction_rounds: 3,
+            })
+        );
+        assert_eq!(
+            event.order_usage_before,
+            Some(OrderUsage {
+                input_tokens: 4,
+                output_tokens: 2,
+                total_tokens: 6,
+                interaction_rounds: 1,
+            })
+        );
         assert_eq!(event.hook.session_key, "hook:corall:1");
     }
 
@@ -507,6 +634,71 @@ mod tests {
     }
 
     #[test]
+    fn local_policy_rejects_event_after_round_cap() {
+        let temp = unique_temp_dir("corall-poller-cap");
+        let original_home = std::env::var_os("HOME");
+        unsafe {
+            std::env::set_var("HOME", &temp);
+        }
+        crate::transcripts::store(crate::transcripts::TranscriptMetadata {
+            agent_id: "agent-1",
+            event_id: "stream-1",
+            message_id: "order.message:1",
+            session_key: "hook:corall:ord-1:message:1",
+            order_id: Some("ord-1"),
+            event_type: Some("order.message"),
+            hook_name: "Corall",
+            message: "first message",
+        })
+        .unwrap();
+
+        let config = ResolvedPollOptions {
+            base_url: "http://127.0.0.1:3001".to_string(),
+            agent_id: "agent-1".to_string(),
+            webhook_token: "token".to_string(),
+            consumer_id: "consumer".to_string(),
+            wait_ms: 30_000,
+            request_timeout_ms: 45_000,
+            ack_timeout_ms: 10_000,
+            idle_delay_ms: 10,
+            error_backoff_ms: 10,
+            max_error_backoff_ms: 100,
+            recent_event_ttl_ms: 60_000,
+            delivery: DeliveryMode::Exec {
+                program: "true".to_string(),
+                args: Vec::new(),
+            },
+        };
+        let event = PollingEvent {
+            id: "stream-2".to_string(),
+            dedupe_id: "order.message:2".to_string(),
+            order_id: Some("ord-1".to_string()),
+            event_type: Some("order.message".to_string()),
+            order_policy: Some(OrderPolicy {
+                included_input_tokens: 16_000,
+                included_output_tokens: 8_000,
+                max_total_tokens: 24_000,
+                max_interaction_rounds: 1,
+            }),
+            order_usage_before: None,
+            hook: HookPayload {
+                message: "second message".to_string(),
+                name: "Corall".to_string(),
+                session_key: "hook:corall:ord-1:message:2".to_string(),
+                deliver: false,
+            },
+        };
+
+        assert!(should_reject_event_locally(&config, &event).unwrap());
+
+        if let Some(home) = original_home {
+            unsafe {
+                std::env::set_var("HOME", home);
+            }
+        }
+    }
+
+    #[test]
     fn extract_events_accepts_single_event_shape() {
         let payload = json!({
             "event": {
@@ -523,6 +715,53 @@ mod tests {
         let events = extract_events(&payload);
         assert_eq!(events.len(), 1);
         assert_eq!(events[0]["id"], "stream-3");
+    }
+
+    #[test]
+    fn local_policy_rejects_event_after_token_cap() {
+        let config = ResolvedPollOptions {
+            base_url: "http://127.0.0.1:3001".to_string(),
+            agent_id: "agent-1".to_string(),
+            webhook_token: "token".to_string(),
+            consumer_id: "consumer".to_string(),
+            wait_ms: 30_000,
+            request_timeout_ms: 45_000,
+            ack_timeout_ms: 10_000,
+            idle_delay_ms: 10,
+            error_backoff_ms: 10,
+            max_error_backoff_ms: 100,
+            recent_event_ttl_ms: 60_000,
+            delivery: DeliveryMode::Exec {
+                program: "true".to_string(),
+                args: Vec::new(),
+            },
+        };
+        let event = PollingEvent {
+            id: "stream-3".to_string(),
+            dedupe_id: "order.message:3".to_string(),
+            order_id: Some("ord-1".to_string()),
+            event_type: Some("order.message".to_string()),
+            order_policy: Some(OrderPolicy {
+                included_input_tokens: 5,
+                included_output_tokens: 8_000,
+                max_total_tokens: 12,
+                max_interaction_rounds: 3,
+            }),
+            order_usage_before: Some(OrderUsage {
+                input_tokens: 4,
+                output_tokens: 3,
+                total_tokens: 7,
+                interaction_rounds: 1,
+            }),
+            hook: HookPayload {
+                message: "one two three".to_string(),
+                name: "Corall".to_string(),
+                session_key: "hook:corall:ord-1:message:3".to_string(),
+                deliver: false,
+            },
+        };
+
+        assert!(should_reject_event_locally(&config, &event).unwrap());
     }
 
     #[test]
@@ -651,6 +890,10 @@ mod tests {
         let event = PollingEvent {
             id: "stream-1".to_string(),
             dedupe_id: "order-1".to_string(),
+            order_id: Some("ord-1".to_string()),
+            event_type: Some("order.message".to_string()),
+            order_policy: None,
+            order_usage_before: None,
             hook: HookPayload {
                 message: "paid".to_string(),
                 name: "Corall".to_string(),
@@ -697,5 +940,16 @@ mod tests {
             .expect("clock should be valid")
             .as_nanos();
         std::env::temp_dir().join(format!("{prefix}-{nanos}.json"))
+    }
+
+    fn unique_temp_dir(prefix: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("clock should be valid")
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("{prefix}-{nanos}"));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
     }
 }
