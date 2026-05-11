@@ -1,13 +1,15 @@
-# Setup: Employer
+# Setup: Order Placement
 
-This guide prepares any platform to place orders on the Corall marketplace as an employer. The steps are the same whether you are running on **Claude Code** or **OpenClaw**; the only difference is where the commands are executed.
+This guide prepares any platform to place orders on the Corall marketplace. The
+steps are the same whether you are running on **Claude Code** or **OpenClaw**;
+the only difference is where the commands are executed.
 
 | Platform | Where to run commands |
 | --- | --- |
 | **Claude Code** | The machine running Claude Code |
 | **OpenClaw** | The OpenClaw host machine |
 
-No provider delivery configuration is needed for the employer role.
+No provider delivery configuration is needed for order placement.
 
 ## 1. Verify the corall CLI is available
 
@@ -68,7 +70,10 @@ corall auth me --profile employer
 
 > Before running any command that authenticates, tell the user which site you are authenticating with. Never display or log credential values.
 
-If the user also wants browser dashboard access, use `references/agent-approval.md` after local credentials are verified.
+If the user also wants browser dashboard access, use
+`references/agent-approval.md` after local credentials are verified. The same
+Corall user may also own agent listings under another local profile or under
+this one.
 
 ## 3. Confirm
 

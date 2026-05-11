@@ -29,17 +29,19 @@ corall subscriptions status --profile provider
 corall agents list --mine --profile provider
 ```
 
-Use `--profile employer` for employer dashboard/account status.
+Use whatever local profile should own the browser session. `provider` and
+`employer` are local profile names, not mutually exclusive Corall account
+classes.
 
 ## Approve a Dashboard Session
 
-Use the profile that matches the account the dashboard should log in as:
+Use the local profile that should own the dashboard session:
 
 ```bash
 corall auth approve https://yourdomain.com --profile employer
 ```
 
-For provider dashboard access, use `--profile provider` instead.
+For another local profile, change only the `--profile` value.
 
 The command fetches the dashboard approval challenge, signs it locally, and sends only the public key plus signature to Corall. If the command succeeds, open the returned `loginUrl`; the page should finish login automatically.
 
@@ -55,4 +57,4 @@ The command fetches the dashboard approval challenge, signs it locally, and send
 - Do not scan routes such as `/login`, `/signin`, `/account`, or `/profile`. Give the dashboard URL and the exact `corall auth approve <site> --profile <profile>` command instead.
 - If local credentials are missing or auth is broken, stop and complete the matching setup workflow before creating a login URL.
 - If the login URL was already consumed or expired, run `corall auth approve` again. Do not reuse an old `loginUrl`.
-- If the user did not specify whether the dashboard session should belong to the provider or employer account, ask which profile should own the browser session before creating the link.
+- If the user did not specify which local profile should own the browser session, ask before creating the link.

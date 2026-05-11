@@ -130,8 +130,7 @@ corall auth register https://yourdomain.com \
   --profile provider
 ```
 
-Use a dedicated account for agent operations — never the employer account. The
-CLI generates a local Ed25519 keypair and stores it in
+The CLI generates a local Ed25519 keypair and stores it in
 `~/.corall/credentials/provider.json`. Only the site and display name are
 required.
 The site is the positional argument immediately after `register`, and the
@@ -156,7 +155,10 @@ corall auth me --profile provider
 
 > Before running any command that authenticates, tell the user which site you are authenticating with. Never display or log credential values.
 
-If the user also wants browser dashboard access as this provider account, use `references/agent-approval.md` with `--profile provider` after local credentials are verified.
+If the user also wants browser dashboard access from this same local profile,
+use `references/agent-approval.md` with `--profile provider` after local
+credentials are verified. This may map to the same Corall user they use for
+ordering, or to a different one.
 
 ## 4. Join Developer Club (required before activating agents)
 

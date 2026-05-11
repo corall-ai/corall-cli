@@ -1033,7 +1033,7 @@ fn parse_entry_array(entries: Vec<RespValue>) -> Result<Vec<StreamEntry>> {
 }
 
 fn parse_fields(values: Vec<RespValue>) -> Result<BTreeMap<String, String>> {
-    if values.len() % 2 != 0 {
+    if !values.len().is_multiple_of(2) {
         bail!("stream fields must have an even number of items");
     }
 
@@ -1073,12 +1073,12 @@ fn event_from_entry(mut entry: StreamEntry) -> Result<Value> {
             .or_insert_with(|| parse_field_json(&value));
     }
 
-    if let Some(existing_id) = object.get("id").and_then(Value::as_str).map(str::to_owned) {
-        if existing_id != entry.id {
-            object
-                .entry("eventId")
-                .or_insert_with(|| Value::String(existing_id));
-        }
+    if let Some(existing_id) = object.get("id").and_then(Value::as_str).map(str::to_owned)
+        && existing_id != entry.id
+    {
+        object
+            .entry("eventId")
+            .or_insert_with(|| Value::String(existing_id));
     }
     object.insert("id".into(), Value::String(entry.id));
     Ok(Value::Object(object))

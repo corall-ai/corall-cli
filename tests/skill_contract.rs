@@ -6,6 +6,7 @@ const SETUP_EMPLOYER: &str = include_str!("../skills/corall/references/setup-emp
 const SKILL_PACKAGE_SUBMIT: &str =
     include_str!("../skills/corall/references/skill-package-submit.md");
 const AGENT_APPROVAL: &str = include_str!("../skills/corall/references/agent-approval.md");
+const REPORT_AGENT: &str = include_str!("../skills/corall/references/report-agent.md");
 const FILE_UPLOAD: &str = include_str!("../skills/corall/references/file-upload.md");
 const PAYOUT: &str = include_str!("../skills/corall/references/payout.md");
 const CLI_REFERENCE: &str = include_str!("../skills/corall/references/cli-reference.md");
@@ -20,6 +21,7 @@ fn skill_routes_corall_prompts_to_the_expected_modes() {
     assert_contains(SKILL, "references/skill-package-submit.md");
     assert_contains(SKILL, "references/setup-provider-openclaw.md");
     assert_contains(SKILL, "references/agent-approval.md");
+    assert_contains(SKILL, "references/report-agent.md");
     assert_contains(SKILL, "Pass it explicitly on every command");
     assert_contains(SKILL, "Delivery verification");
     assert_contains(SKILL, "Never expose a private key");
@@ -33,6 +35,14 @@ fn skill_routes_corall_prompts_to_the_expected_modes() {
     assert_contains(
         SKILL,
         "Do not start a new checkout unless the package is not already purchased",
+    );
+    assert_contains(
+        SKILL,
+        "Corall does not split registration into mutually exclusive account types",
+    );
+    assert_contains(
+        SKILL,
+        "same Corall user can publish agents, place orders, or do both",
     );
     assert_contains(
         SKILL,
@@ -51,6 +61,8 @@ fn skill_routes_corall_prompts_to_the_expected_modes() {
 #[test]
 fn order_handle_prompt_accepts_then_submits_with_provider_profile() {
     assert_contains(ORDER_HANDLE, "polling-delivered mode");
+    assert_contains(ORDER_HANDLE, "Review the incoming Corall message once");
+    assert_contains(ORDER_HANDLE, "corall agent report <reported_agent_id>");
     assert_contains(ORDER_HANDLE, "corall auth me --profile provider");
     assert_contains(
         ORDER_HANDLE,
@@ -189,6 +201,7 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     assert_contains(CLI_REFERENCE, "CORALL_EVENT_ID");
     assert_contains(CLI_REFERENCE, "can omit `--webhook-token`");
     assert_contains(CLI_REFERENCE, "corall auth approve");
+    assert_contains(CLI_REFERENCE, "corall agent report");
     assert_contains(
         CLI_REFERENCE,
         "--reviewer-kind <human|employer-agent|system>",
@@ -219,9 +232,15 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
         AGENT_APPROVAL,
         "corall subscriptions status --profile provider",
     );
+    assert_contains(REPORT_AGENT, "corall agent report <reported_agent_id>");
+    assert_contains(REPORT_AGENT, "Message History");
     assert_contains(AGENT_APPROVAL, "HttpOnly session cookie");
     assert_contains(AGENT_APPROVAL, "Conservative Fallback For Weaker Models");
     assert_contains(AGENT_APPROVAL, "Do not reuse an old `loginUrl`");
+    assert_contains(
+        AGENT_APPROVAL,
+        "not mutually exclusive Corall account",
+    );
     assert_contains(AGENT_APPROVAL, "`https://yourdomain.com/dashboard`");
     assert_contains(
         AGENT_APPROVAL,
@@ -267,6 +286,10 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     assert_contains(
         SETUP_EMPLOYER,
         "verify with `corall auth me --profile employer` instead of registering a second account",
+    );
+    assert_contains(
+        SETUP_EMPLOYER,
+        "Corall user may also own agent listings",
     );
     assert_contains(FILE_UPLOAD, "Conservative Fallback For Weaker Models");
     assert_contains(FILE_UPLOAD, "python3 -c");

@@ -321,7 +321,7 @@ fn stage_embedded_polling_plugin() -> Result<PathBuf> {
 
 fn write_embedded_polling_plugin(target: &Path) -> Result<()> {
     if target.exists() {
-        fs::remove_dir_all(&target)
+        fs::remove_dir_all(target)
             .with_context(|| format!("failed to replace {}", target.display()))?;
     }
     for file in EMBEDDED_POLLING_PLUGIN_FILES {

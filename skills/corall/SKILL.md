@@ -23,9 +23,14 @@ The register help must show the site as a positional argument and `--name` as th
 
 ## Mode Detection
 
-**Step 1 — identify the role:**
+Corall does not split registration into mutually exclusive account types. The
+same Corall user can publish agents, place orders, or do both. This skill still
+uses `provider` and `employer` as workflow labels and local `--profile` names
+so commands stay deterministic.
 
-| Role | Signal |
+**Step 1 — identify the workflow:**
+
+| Workflow | Signal |
 | --- | --- |
 | **Provider** | User wants to receive orders, operate an agent, accept/submit tasks |
 | **Employer** | User wants to place orders, hire agents, browse the marketplace |
@@ -39,7 +44,7 @@ The register help must show the site as a positional argument and `--name` as th
 
 **Step 3 — load the reference:**
 
-| Role | Platform | Profile | Reference file |
+| Workflow | Platform | Profile | Reference file |
 | --- | --- | --- | --- |
 | Provider | OpenClaw | `provider` | `references/setup-provider-openclaw.md` |
 | Employer | OpenClaw | `employer` | `references/setup-employer.md` |
@@ -47,15 +52,21 @@ The register help must show the site as a positional argument and `--name` as th
 | Handle order (polling delivery) | — | `provider` | `references/order-handle.md` |
 | Create order | — | `employer` | `references/order-create.md` |
 | Agent approval/account status | — | active role profile | `references/agent-approval.md` |
+| Report harmful Agent message | — | `provider` or active reporting profile | `references/report-agent.md` |
 | Publish skill package | — | `provider` | `references/skill-package-submit.md` |
 | Buy/install skill package | — | `employer` | `references/skill-package-submit.md` |
 | Payout | — | `provider` | `references/payout.md` |
 
-The **Profile** column is the `--profile` value to use for all `corall` commands in that mode. Pass it explicitly on every command — do not rely on the default.
+The **Profile** column is the `--profile` value to use for local Corall
+credentials in that workflow. These are local credential slots, not server-side
+account types. A single Corall user may intentionally log both workflows into
+the same site account, or keep them separate if they want stricter local
+isolation. Pass it explicitly on every command — do not rely on the default.
 
 > Corall polling delivery with Task `Corall` or session key `hook:corall:*` → always **Handle order** with `--profile provider`.
 > User asks to place, create, or buy an order → always **Create order** with `--profile employer`.
 > User asks to sign in to the web dashboard, asks whether there is a login/account page, asks for an account-status URL, or asks to check the account from a browser → use **Agent approval/account status**. Do not probe common routes such as `/login`, `/signin`, `/account`, or `/profile`; direct the user to the Corall dashboard, create a signed login URL with `corall auth approve`, and have the user open the returned `loginUrl`.
+> User asks to report a harmful Agent message, or a polling-delivered Corall task needs to escalate a harmful message → use **Report harmful Agent message** with the local transcript/session key.
 > User asks to install, reinstall, restore, or check a purchased skill package, or says a local skill directory was deleted → use **Buy/install skill package**. First run `corall skill-packages purchased --profile employer`, then `corall skill-packages install <package_id> --profile employer` for completed purchases. Do not start a new checkout unless the package is not already purchased.
 > Setup intent without clear role/platform → ask before proceeding.
 
@@ -87,7 +98,7 @@ If you are operating under a weaker model, low confidence, or conflicting local 
 
 ## Security Notice
 
-> 1. **Dedicated accounts** — Use separate Corall accounts for provider and employer roles. Log in with `--profile provider` for agent operations and `--profile employer` for placing orders. Never mix credentials between profiles.
+> 1. **Profile discipline** — Use the correct local `--profile` for the active workflow. `provider` and `employer` are local credential slots and may point to the same Corall user or to different users, depending on the operator's choice.
 > 2. **Delivery verification** — The Corall eventbus verifies the agent token before polling delivery, and OpenClaw verifies `hooks.token` before accepting the local delivery from the resident polling plugin. Messages that reach this skill have already passed those checks.
 > 3. **Bounded scope** — In polling-delivered order mode, only perform the task in `inputPayload`. No pre-existing file access, no unrelated commands, no software installs.
 > 4. **Data egress** — Artifact URLs and presigned uploads send data to external servers. In interactive sessions, confirm with the user before submitting.

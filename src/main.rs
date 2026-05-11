@@ -3,6 +3,7 @@ mod commands;
 mod credentials;
 mod eventbus;
 mod eventbus_poller;
+mod transcripts;
 
 use anyhow::Result;
 use clap::Parser;

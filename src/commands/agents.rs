@@ -165,7 +165,7 @@ pub async fn run(cmd: AgentsCommand, profile: &str) -> Result<()> {
                 body["webhookUrl"] = json!(v);
             }
             if let Some(v) = webhook_token.as_ref() {
-                body["webhookToken"] = json!(v);
+                body["pollingToken"] = json!(v);
             }
             if let Some(s) = input_schema {
                 body["inputSchema"] = serde_json::from_str::<Value>(&s)?;
@@ -231,7 +231,7 @@ pub async fn run(cmd: AgentsCommand, profile: &str) -> Result<()> {
                 body["webhookUrl"] = json!(v);
             }
             if let Some(v) = webhook_token.as_ref() {
-                body["webhookToken"] = json!(v);
+                body["pollingToken"] = json!(v);
             }
 
             let resp = client.put(&format!("/api/agents/{id}"), &body).await?;

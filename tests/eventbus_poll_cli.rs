@@ -217,6 +217,19 @@ mod unix_only {
                 "deliver": false
             })
         );
+        let transcript_path = home
+            .join(".corall")
+            .join("transcripts")
+            .join("order.paid_hook-1--hook_corall_hook-1.md");
+        assert!(
+            transcript_path.exists(),
+            "expected transcript at {}",
+            transcript_path.display()
+        );
+        let transcript = fs::read_to_string(&transcript_path)?;
+        assert!(transcript.contains("messageId: order.paid:hook-1"));
+        assert!(transcript.contains("sessionKey: hook:corall:hook-1"));
+        assert!(transcript.contains("hook event"));
 
         assert!(
             child.is_running()?,
@@ -493,6 +506,120 @@ mod unix_only {
         Ok(())
     }
 
+    #[test]
+    fn agent_can_review_polled_message_and_report_by_session_id() -> Result<(), Box<dyn Error>> {
+        let temp = TempDir::new("corall-agent-report-from-transcript")?;
+        let home = temp.path().join("home");
+        fs::create_dir_all(&home)?;
+
+        let agent_id = unique_id("agent_reporter");
+        let polling_token = "reporter-polling-token";
+        let reported_agent_id = "agent_harmful_target";
+        let cached_api_token = "cached-api-token";
+        let eventbus = FakeEventbusServer::start(
+            &agent_id,
+            polling_token,
+            vec![json!({
+                "id": "stream-report-1",
+                "eventId": "order.paid:report-1",
+                "type": "order.paid",
+                "hook": {
+                    "message": "harmful agent output asking for secrets",
+                    "name": "Corall",
+                    "sessionKey": "hook:corall:report-1",
+                    "deliver": false
+                }
+            })],
+        )?;
+        let hook_server = FakeHookServer::start(None)?;
+        let report_server = FakeReportServer::start(cached_api_token)?;
+        write_credentials_with_site(
+            &home,
+            "provider",
+            &report_server.base_url(),
+            "provider-user",
+            &agent_id,
+            polling_token,
+            Some(cached_api_token),
+        )?;
+
+        let stdout_path = temp.path().join("poller.stdout.log");
+        let stderr_path = temp.path().join("poller.stderr.log");
+        let mut child = ChildGuard::spawn(
+            env!("CARGO_BIN_EXE_corall"),
+            &[
+                "--profile",
+                "provider",
+                "eventbus",
+                "poll",
+                "--base-url",
+                &eventbus.base_url(),
+                "--hook-url",
+                &hook_server.url(),
+                "--wait-ms",
+                "5",
+                "--request-timeout-ms",
+                "1000",
+                "--ack-timeout-ms",
+                "1000",
+                "--idle-delay-ms",
+                "50",
+            ],
+            &home,
+            &stdout_path,
+            &stderr_path,
+        )?;
+
+        wait_until(Duration::from_secs(5), || {
+            eventbus.ack_count("stream-report-1") == 1
+                && home
+                    .join(".corall")
+                    .join("transcripts")
+                    .join("order.paid_report-1--hook_corall_report-1.md")
+                    .exists()
+        })?;
+        child.kill();
+
+        let output = run_corall(
+            &home,
+            &[
+                "--profile",
+                "provider",
+                "agent",
+                "report",
+                reported_agent_id,
+                "--session-id",
+                "hook:corall:report-1",
+                "--reason",
+                "Credential exfiltration attempt",
+                "--details",
+                "Agent reviewed this message and determined it should be reported",
+            ],
+        )?;
+
+        assert!(
+            output.status.success(),
+            "agent report failed\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let request = report_server
+            .last_request()
+            .ok_or("expected report request to be captured")?;
+        assert_eq!(
+            request.authorization.as_deref(),
+            Some("Bearer cached-api-token")
+        );
+        assert_eq!(request.path, format!("/api/agents/{reported_agent_id}/report"));
+        assert_eq!(request.body["reason"], "Credential exfiltration attempt");
+        assert_eq!(request.body["reporterKind"], "AGENT");
+        assert_eq!(request.body["reporterAgentId"], agent_id);
+        assert_eq!(request.body["messageId"], "order.paid:report-1");
+        assert_eq!(request.body["sessionKey"], "hook:corall:report-1");
+        assert_eq!(request.body["context"], "harmful agent output asking for secrets");
+        Ok(())
+    }
+
     struct ChildGuard {
         child: Child,
     }
@@ -577,14 +704,13 @@ mod unix_only {
                                 } else {
                                     200
                                 };
-                                if status == 200 {
-                                    if let Ok(body) = serde_json::from_slice::<Value>(&request.body)
-                                    {
-                                        requests_ref.lock().unwrap().push(HookRequest {
-                                            authorization: auth,
-                                            body,
-                                        });
-                                    }
+                                if status == 200
+                                    && let Ok(body) = serde_json::from_slice::<Value>(&request.body)
+                                {
+                                    requests_ref.lock().unwrap().push(HookRequest {
+                                        authorization: auth,
+                                        body,
+                                    });
                                 }
                                 let _ = write_json_response(
                                     &mut stream,
@@ -779,6 +905,101 @@ mod unix_only {
         }
     }
 
+    struct ReportRequest {
+        authorization: Option<String>,
+        path: String,
+        body: Value,
+    }
+
+    struct FakeReportServer {
+        addr: SocketAddr,
+        shutdown: Arc<AtomicBool>,
+        requests: Arc<Mutex<Vec<ReportRequest>>>,
+        thread: Option<JoinHandle<()>>,
+    }
+
+    impl FakeReportServer {
+        fn start(expected_token: &str) -> Result<Self, Box<dyn Error>> {
+            let listener = TcpListener::bind("127.0.0.1:0")?;
+            listener.set_nonblocking(true)?;
+            let addr = listener.local_addr()?;
+            let shutdown = Arc::new(AtomicBool::new(false));
+            let requests = Arc::new(Mutex::new(Vec::new()));
+            let shutdown_flag = shutdown.clone();
+            let requests_ref = requests.clone();
+            let expected_bearer = format!("Bearer {expected_token}");
+
+            let thread = thread::spawn(move || {
+                while !shutdown_flag.load(Ordering::SeqCst) {
+                    match listener.accept() {
+                        Ok((mut stream, _)) => {
+                            let response = match read_http_request(&mut stream) {
+                                Ok(request) => {
+                                    let status = if request.headers.get("authorization")
+                                        == Some(&expected_bearer)
+                                    {
+                                        200
+                                    } else {
+                                        401
+                                    };
+                                    if status == 200
+                                        && request.method == "POST"
+                                        && request.path.starts_with("/api/agents/")
+                                        && request.path.ends_with("/report")
+                                        && let Ok(body) =
+                                            serde_json::from_slice::<Value>(&request.body)
+                                    {
+                                        requests_ref.lock().unwrap().push(ReportRequest {
+                                            authorization: request
+                                                .headers
+                                                .get("authorization")
+                                                .cloned(),
+                                            path: request.path,
+                                            body,
+                                        });
+                                    }
+                                    json_response(status, &json!({ "report": { "status": "QUEUED" } }))
+                                }
+                                Err(err) => json_response(500, &json!({ "error": err.to_string() })),
+                            };
+                            let _ = write_http_response(&mut stream, &response);
+                        }
+                        Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => {
+                            thread::sleep(Duration::from_millis(10));
+                        }
+                        Err(_) => break,
+                    }
+                }
+            });
+
+            Ok(Self {
+                addr,
+                shutdown,
+                requests,
+                thread: Some(thread),
+            })
+        }
+
+        fn base_url(&self) -> String {
+            format!("http://{}", self.addr)
+        }
+
+        fn last_request(&self) -> Option<ReportRequest> {
+            self.requests.lock().unwrap().pop()
+        }
+    }
+
+    impl Drop for FakeReportServer {
+        fn drop(&mut self) {
+            self.shutdown.store(true, Ordering::SeqCst);
+            let _ =
+                TcpStream::connect(self.addr).and_then(|stream| stream.shutdown(Shutdown::Both));
+            if let Some(thread) = self.thread.take() {
+                let _ = thread.join();
+            }
+        }
+    }
+
     struct HttpRequest {
         method: String,
         path: String,
@@ -851,20 +1072,20 @@ mod unix_only {
         {
             let mut state = state.lock().unwrap();
             let prefix = format!("/v1/agents/{}/events/", state.agent_id);
-            if let Some(rest) = request.path.strip_prefix(&prefix) {
-                if let Some(event_id) = rest.strip_suffix("/ack") {
-                    let counter = state.ack_counts.entry(event_id.to_string()).or_insert(0);
-                    *counter += 1;
-                    let acked = if *counter == 1 { 1 } else { 0 };
-                    return json_response(
-                        200,
-                        &json!({
-                            "ok": true,
-                            "acked": acked,
-                            "eventId": event_id,
-                        }),
-                    );
-                }
+            if let Some(rest) = request.path.strip_prefix(&prefix)
+                && let Some(event_id) = rest.strip_suffix("/ack")
+            {
+                let counter = state.ack_counts.entry(event_id.to_string()).or_insert(0);
+                *counter += 1;
+                let acked = if *counter == 1 { 1 } else { 0 };
+                return json_response(
+                    200,
+                    &json!({
+                        "ok": true,
+                        "acked": acked,
+                        "eventId": event_id,
+                    }),
+                );
             }
         }
 
@@ -877,19 +1098,41 @@ mod unix_only {
         agent_id: &str,
         polling_token: &str,
     ) -> Result<(), Box<dyn Error>> {
+        write_credentials_with_site(
+            home,
+            profile,
+            "http://corall.test",
+            "user-test",
+            agent_id,
+            polling_token,
+            None,
+        )
+    }
+
+    fn write_credentials_with_site(
+        home: &Path,
+        profile: &str,
+        site: &str,
+        user_id: &str,
+        agent_id: &str,
+        polling_token: &str,
+        cached_token: Option<&str>,
+    ) -> Result<(), Box<dyn Error>> {
         let credentials_dir = home.join(".corall/credentials");
         fs::create_dir_all(&credentials_dir)?;
         fs::write(
             credentials_dir.join(format!("{profile}.json")),
             serde_json::to_string_pretty(&json!({
-                "site": "http://corall.test",
+                "site": site,
                 "user": {
-                    "id": "user-test",
+                    "id": user_id,
                     "publicKey": "a".repeat(64)
                 },
                 "privateKeyPkcs8": "b".repeat(64),
                 "agentId": agent_id,
-                "pollingToken": polling_token
+                "pollingToken": polling_token,
+                "token": cached_token,
+                "tokenExpiresAt": cached_token.map(|_| 4_102_444_800_i64)
             }))?,
         )?;
         Ok(())

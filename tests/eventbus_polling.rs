@@ -156,10 +156,10 @@ fn wait_for_health(addr: SocketAddr, child: &mut Child) -> Result<(), Box<dyn Er
             return Err(format!("eventbus process exited before health check: {status}").into());
         }
 
-        if let Ok(response) = raw_http_json(addr, "GET", "/health", None) {
-            if response["status"] == 200 {
-                return Ok(());
-            }
+        if let Ok(response) = raw_http_json(addr, "GET", "/health", None)
+            && response["status"] == 200
+        {
+            return Ok(());
         }
 
         if Instant::now() >= deadline {

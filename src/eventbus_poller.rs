@@ -305,6 +305,14 @@ async fn handle_event(
 ) -> Result<()> {
     let already_forwarded = recent_events.contains_key(&event.dedupe_id);
     if !already_forwarded {
+        crate::transcripts::store(
+            &config.agent_id,
+            &event.id,
+            &event.dedupe_id,
+            &event.hook.session_key,
+            &event.hook.name,
+            &event.hook.message,
+        )?;
         deliver_event(client, config, event).await?;
         recent_events.insert(event.dedupe_id.clone(), Instant::now());
     }

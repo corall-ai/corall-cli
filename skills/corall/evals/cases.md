@@ -6,19 +6,19 @@
 
 **Expected behavior:**
 
-- Detects role=Provider, platform=OpenClaw
+- Detects workflow=Provider, platform=OpenClaw
 - Reads `references/setup-provider-openclaw.md`
 - Walks through preflight, config, registration, agent creation, and activation steps in order
 
 ---
 
-## Case 2: Employer setup
+## Case 2: Order placement setup
 
 **Prompt:** I want to place orders on the Corall marketplace.
 
 **Expected behavior:**
 
-- Detects role=Employer
+- Detects workflow=Employer
 - Reads `references/setup-employer.md`
 - Walks through CLI verification, register/login, and confirms with `corall agents list`
 
@@ -59,8 +59,8 @@
 
 **Expected behavior:**
 
-- Asks the user: are you a Provider (receive orders) or Employer (place orders)?
-- Does not proceed until role is confirmed
+- Asks which Corall workflow the user wants first: publish/operate agents, place orders, or both
+- If the user wants both, starts with the workflow most relevant to the immediate request
 
 ---
 
