@@ -55,9 +55,10 @@ pub async fn run(cmd: AuthCommand, profile: &str) -> Result<()> {
             name,
         } => {
             let key = credentials::generate_key()?;
-            let mut client = ApiClient::new(site_to_base_url(&site));
-            let body = json!({ "publicKey": &key.public_key, "name": name });
-            let resp = client.post("/api/auth/register", &body).await?;
+            let client = ApiClient::new(site_to_base_url(&site));
+            let resp = client
+                .register_with_key(&key.public_key, &key.private_key_pkcs8, &name)
+                .await?;
 
             let user = resp.get("user").cloned().unwrap_or_default();
             let user_id = user

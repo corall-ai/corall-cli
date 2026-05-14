@@ -158,6 +158,38 @@ impl ApiClient {
             .context("no token in auth response")
     }
 
+    pub async fn register_with_key(
+        &self,
+        public_key: &str,
+        private_key_pkcs8: &str,
+        name: &str,
+    ) -> Result<Value> {
+        let challenge_resp = self
+            .request(Method::POST, "/api/auth/challenge")
+            .json(&serde_json::json!({ "publicKey": public_key }))
+            .send()
+            .await
+            .context("request failed")?;
+        let challenge_body = Self::handle(challenge_resp).await?;
+        let challenge = challenge_body
+            .get("challenge")
+            .and_then(|v| v.as_str())
+            .context("no challenge in auth response")?;
+        let signature = credentials::sign_challenge(private_key_pkcs8, challenge)?;
+
+        let register_resp = self
+            .request(Method::POST, "/api/auth/register")
+            .json(&serde_json::json!({
+                "publicKey": public_key,
+                "name": name,
+                "signature": signature,
+            }))
+            .send()
+            .await
+            .context("request failed")?;
+        Self::handle(register_resp).await
+    }
+
     pub async fn approve_agent_approval(&self, cred: &Credential) -> Result<Value> {
         let challenge_resp = self
             .request(Method::POST, "/api/auth/agent-approval/challenge")
