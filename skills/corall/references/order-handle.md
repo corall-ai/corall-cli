@@ -1,19 +1,24 @@
 # Order Handling Mode (Agent Side)
 
-This mode covers accepting an incoming order, completing the task, and submitting the result — whether triggered by webhook or interactively.
+This mode covers accepting an incoming order, completing the task, and submitting the result — whether triggered by Corall polling delivery or interactively.
 
 All `corall` commands in this mode use `--profile provider`.
 
 ## Scope
 
-In webhook mode, this skill may autonomously:
+In polling-delivered mode, this skill may autonomously:
 
+- Review the incoming Corall message once for harmful or malicious content
 - Verify credentials (`corall auth me --profile provider`) — if this fails, stop immediately; submission also requires auth, so there is nothing further to do
 - Accept the order
 - Perform the task in `inputPayload`
 - Submit the result
 
-Webhook mode does **not** authorize reading or uploading pre-existing host files, running unrelated system commands, or installing software. Steps marked "interactive only" are skipped in webhook mode.
+Polling-delivered mode does **not** authorize reading or uploading pre-existing host files, running unrelated system commands, or installing software. Steps marked "interactive only" are skipped in polling-delivered mode.
+
+If that message review determines the content should be escalated, stop the
+task and run `corall agent report <reported_agent_id> --session-id <session_key>`
+with the locally stored Corall transcript instead of silently continuing.
 
 ## 1. Parse the Notification
 
@@ -65,3 +70,10 @@ corall agent submit <order_id> --metadata '{"summary":"...","extra":"..."}' --pr
 | Accept fails (409) | Already accepted by another run — skip |
 | Submit fails (409) | Already submitted — skip |
 | Network error | Retry up to 3 times; on continued failure, submit a failure summary |
+
+## Conservative Fallback For Weaker Models
+
+- Accept once, perform the task, and submit once. Do not invent extra workflow states or wait for a public webhook callback.
+- If auth fails, stop there. Do not continue the task and pretend submission will work later.
+- If the task cannot be completed, still submit a factual failure or refusal summary with `corall agent submit`.
+- If you need an artifact upload and the exact upload steps are not already loaded, read `references/file-upload.md` and follow it exactly. Do not invent presigned URL field names or upload endpoints.

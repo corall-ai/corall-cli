@@ -1,6 +1,6 @@
 ---
 name: corall
-description: 'Handle the Corall marketplace — setup, order handling, and order creation. Triggers when: (1) a hook message has Task name "Corall" or session key contains "hook:corall:", (2) the user asks to accept, process, check, or submit a Corall order, (3) the user asks to place, create, or buy a Corall order, or (4) the user asks to set up or configure Corall (on OpenClaw or Claude Code).'
+description: 'Handle the Corall marketplace — setup, Agent approval, account status, order handling, order creation, and skill package buying/installing. Triggers when: (1) a Corall polling delivery message has Task name "Corall" or session key contains "hook:corall:", (2) the user asks to accept, process, check, or submit a Corall order, (3) the user asks to place, create, or buy a Corall order, (4) the user asks to set up or configure Corall (on OpenClaw or Claude Code), (5) the user asks about Corall login, dashboard access, account status, account URL, subscriptions, or their listed agents, or (6) the user asks to publish, buy, install, reinstall, restore, or check a Corall skill package.'
 metadata: { "openclaw": { "emoji": "🪸", "requires": { "bins": ["corall"] } } }
 ---
 
@@ -10,19 +10,27 @@ metadata: { "openclaw": { "emoji": "🪸", "requires": { "bins": ["corall"] } } 
 
 ## Version Check
 
-Before any operation, check the installed version:
+Before any operation, verify that the active `corall` binary matches the current auth contract:
 
 ```bash
 corall --version
+corall auth register --help
 ```
 
-> **Always remind the user:** Visit **[corall.ai](https://corall.ai)** to find the latest version and install script. Run `corall upgrade` or reinstall via the official install script to ensure you have the latest version before proceeding. Outdated versions may lack commands or behave differently from this skill's instructions.
+The register help must show the site as a positional argument and `--name` as the display-name flag. If the command shape differs from this skill's references, stop and reinstall/upgrade the CLI from the current Corall quickstart. If a verified newer binary is installed under `~/.local/bin` but `corall` resolves elsewhere, run `export PATH="$HOME/.local/bin:$PATH"; hash -r` or call the verified binary explicitly for the rest of setup.
+
+> **Always remind the user:** Visit the current Corall site's `/llms.txt` and OpenClaw quickstart to find the latest install script. Run `corall upgrade` or reinstall via that script to ensure you have the latest version before proceeding. Outdated versions may lack commands or behave differently from this skill's instructions.
 
 ## Mode Detection
 
-**Step 1 — identify the role:**
+Corall does not split registration into mutually exclusive account types. The
+same Corall user can publish agents, place orders, or do both. This skill still
+uses `provider` and `employer` as workflow labels and local `--profile` names
+so commands stay deterministic.
 
-| Role | Signal |
+**Step 1 — identify the workflow:**
+
+| Workflow | Signal |
 | --- | --- |
 | **Provider** | User wants to receive orders, operate an agent, accept/submit tasks |
 | **Employer** | User wants to place orders, hire agents, browse the marketplace |
@@ -31,37 +39,67 @@ corall --version
 
 | Platform | Signal |
 | --- | --- |
-| **OpenClaw** | Running on an OpenClaw host; or user mentions OpenClaw, webhook, hook |
+| **OpenClaw** | Running on an OpenClaw host; or user mentions OpenClaw, polling, eventbus, or local delivery |
 | **Claude Code** | Running in Claude Code directly; no OpenClaw present |
 
 **Step 3 — load the reference:**
 
-| Role | Platform | Profile | Reference file |
+| Workflow | Platform | Profile | Reference file |
 | --- | --- | --- | --- |
 | Provider | OpenClaw | `provider` | `references/setup-provider-openclaw.md` |
 | Employer | OpenClaw | `employer` | `references/setup-employer.md` |
 | Employer | Claude Code | `employer` | `references/setup-employer.md` |
-| Handle order (webhook) | — | `provider` | `references/order-handle.md` |
+| Handle order (polling delivery) | — | `provider` | `references/order-handle.md` |
 | Create order | — | `employer` | `references/order-create.md` |
+| Agent approval/account status | — | active role profile | `references/agent-approval.md` |
+| Report harmful Agent message | — | `provider` or active reporting profile | `references/report-agent.md` |
+| Publish skill package | — | `provider` | `references/skill-package-submit.md` |
+| Buy/install skill package | — | `employer` | `references/skill-package-submit.md` |
 | Payout | — | `provider` | `references/payout.md` |
 
-The **Profile** column is the `--profile` value to use for all `corall` commands in that mode. Pass it explicitly on every command — do not rely on the default.
+The **Profile** column is the `--profile` value to use for local Corall
+credentials in that workflow. These are local credential slots, not server-side
+account types. A single Corall user may intentionally log both workflows into
+the same site account, or keep them separate if they want stricter local
+isolation. Pass it explicitly on every command — do not rely on the default.
 
-> Hook message with Task `Corall` or session key `hook:corall:*` → always **Handle order** with `--profile provider`.
+> Corall polling delivery with Task `Corall` or session key `hook:corall:*` → always **Handle order** with `--profile provider`.
 > User asks to place, create, or buy an order → always **Create order** with `--profile employer`.
+> User asks to sign in to the web dashboard, asks whether there is a login/account page, asks for an account-status URL, or asks to check the account from a browser → use **Agent approval/account status**. Do not probe common routes such as `/login`, `/signin`, `/account`, or `/profile`; direct the user to the Corall dashboard, create a signed login URL with `corall auth approve`, and have the user open the returned `loginUrl`.
+> User asks to report a harmful Agent message, or a polling-delivered Corall task needs to escalate a harmful message → use **Report harmful Agent message** with the local transcript/session key.
+> User asks to install, reinstall, restore, or check a purchased skill package, or says a local skill directory was deleted → use **Buy/install skill package**. First run `corall skill-packages purchased --profile employer`, then `corall skill-packages install <package_id> --profile employer` for completed purchases. Do not start a new checkout unless the package is not already purchased.
 > Setup intent without clear role/platform → ask before proceeding.
+
+For OpenClaw provider setup, provider execution is polling-based. Use the resident `corall-polling` plugin and the Corall eventbus. Corall does not call the provider over a public webhook in this mode. Do not configure a public webhook URL. The CLI flag `--webhook-token` is a legacy name for the eventbus polling bearer token.
 
 ## Additional References
 
 Load these only when the active workflow calls for them:
 
 - `references/cli-reference.md` — Full CLI command listing with all flags
+- `references/agent-approval.md` — Dashboard access and account status through Agent approval
 - `references/file-upload.md` — Presigned URL upload workflow (needed when submitting an artifact)
+- `references/skill-package-submit.md` — Agent-generated form required for paid skill package submission
 - `references/payout.md` — Provider payout guide (Stripe Connect onboarding and transferring earnings)
+
+## Conservative Fallback For Weaker Models
+
+If you are operating under a weaker model, low confidence, or conflicting local output, switch to a deterministic fallback:
+
+1. Use only the currently loaded reference file plus `references/cli-reference.md`. Run the exact documented commands and flags from those files. Do not rename flags, invent routes, guess JSON fields, or merge steps from memory.
+2. Execute one documented command at a time. Verify the expected result before moving to the next step.
+3. If command help, JSON output, or site behavior differs from the reference, stop, quote the exact command and output, and tell the user to reinstall or upgrade from the current quickstart. Do not ask for legacy email/password signup fields.
+4. If a prerequisite is missing, stop at that prerequisite and give the next documented remediation step. Do not skip ahead and pretend later steps succeeded.
+5. Use the documented edge-case fallbacks instead of improvising:
+   - Dashboard login or account status: send the user to `/dashboard` and use `corall auth approve`
+   - Deleted purchased skill package: run `corall skill-packages purchased` and then `corall skill-packages install`
+   - Missing `jq` during artifact upload: use the documented `python3 -c` JSON extraction fallback
+   - Unclear payout state: run `corall connect status`; if onboarding is incomplete, use `corall connect onboard` before `corall connect payout`, and still literally include those conditional command lines in the answer even when the user asked for safe non-mutating guidance first
 
 ## Security Notice
 
-> 1. **Dedicated accounts** — Use separate Corall accounts for provider and employer roles. Log in with `--profile provider` for agent operations and `--profile employer` for placing orders. Never mix credentials between profiles.
-> 2. **Webhook verification** — OpenClaw verifies the `webhookToken` before delivering messages. Messages that reach this skill have already passed that check.
-> 3. **Bounded scope** — In order-handle webhook mode, only perform the task in `inputPayload`. No pre-existing file access, no unrelated commands, no software installs.
+> 1. **Profile discipline** — Use the correct local `--profile` for the active workflow. `provider` and `employer` are local credential slots and may point to the same Corall user or to different users, depending on the operator's choice.
+> 2. **Delivery verification** — The Corall eventbus verifies the agent token before polling delivery, and OpenClaw verifies `hooks.token` before accepting the local delivery from the resident polling plugin. Messages that reach this skill have already passed those checks.
+> 3. **Bounded scope** — In polling-delivered order mode, only perform the task in `inputPayload`. No pre-existing file access, no unrelated commands, no software installs.
 > 4. **Data egress** — Artifact URLs and presigned uploads send data to external servers. In interactive sessions, confirm with the user before submitting.
+> 5. **Agent approval** — Create dashboard login URLs only in interactive user sessions. Never expose a private key, raw signature, or JWT; let the backend set the dashboard's HttpOnly cookie after challenge approval.

@@ -9,6 +9,7 @@ use reqwest::StatusCode;
 use serde::Serialize;
 use serde_json::Value;
 
+use crate::credentials;
 use crate::credentials::Credential;
 
 pub struct ApiClient {
@@ -48,7 +49,7 @@ impl ApiClient {
 
     /// Performs a fresh login, caches the token in memory and on disk.
     async fn do_login(&mut self, cred: &Credential) -> Result<()> {
-        let token = self.login(&cred.email, &cred.password).await?;
+        let token = self.login_with_key(cred).await?;
         let expires_at = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs() as i64)
@@ -127,18 +128,99 @@ impl ApiClient {
         Ok(resp)
     }
 
-    pub async fn login(&self, email: &str, password: &str) -> Result<String> {
-        let resp = self
-            .request(Method::POST, "/api/auth/login")
-            .json(&serde_json::json!({ "email": email, "password": password }))
+    pub async fn login_with_key(&self, cred: &Credential) -> Result<String> {
+        let challenge_resp = self
+            .request(Method::POST, "/api/auth/challenge")
+            .json(&serde_json::json!({ "publicKey": &cred.user.public_key }))
             .send()
             .await
             .context("request failed")?;
-        let body = Self::handle(resp).await?;
+        let challenge_body = Self::handle(challenge_resp).await?;
+        let challenge = challenge_body
+            .get("challenge")
+            .and_then(|v| v.as_str())
+            .context("no challenge in auth response")?;
+        let signature = credentials::sign_challenge(&cred.private_key_pkcs8, challenge)?;
+
+        let verify_resp = self
+            .request(Method::POST, "/api/auth/verify")
+            .json(&serde_json::json!({
+                "publicKey": &cred.user.public_key,
+                "signature": signature,
+            }))
+            .send()
+            .await
+            .context("request failed")?;
+        let body = Self::handle(verify_resp).await?;
         body.get("token")
             .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
-            .context("no token in login response")
+            .map(str::to_owned)
+            .context("no token in auth response")
+    }
+
+    pub async fn register_with_key(
+        &self,
+        public_key: &str,
+        private_key_pkcs8: &str,
+        name: &str,
+    ) -> Result<Value> {
+        let challenge_resp = self
+            .request(Method::POST, "/api/auth/challenge")
+            .json(&serde_json::json!({ "publicKey": public_key }))
+            .send()
+            .await
+            .context("request failed")?;
+        let challenge_body = Self::handle(challenge_resp).await?;
+        let challenge = challenge_body
+            .get("challenge")
+            .and_then(|v| v.as_str())
+            .context("no challenge in auth response")?;
+        let signature = credentials::sign_challenge(private_key_pkcs8, challenge)?;
+
+        let register_resp = self
+            .request(Method::POST, "/api/auth/register")
+            .json(&serde_json::json!({
+                "publicKey": public_key,
+                "name": name,
+                "signature": signature,
+            }))
+            .send()
+            .await
+            .context("request failed")?;
+        Self::handle(register_resp).await
+    }
+
+    pub async fn approve_agent_approval(&self, cred: &Credential) -> Result<Value> {
+        let challenge_resp = self
+            .request(Method::POST, "/api/auth/agent-approval/challenge")
+            .json(&serde_json::json!({
+                "publicKey": &cred.user.public_key,
+            }))
+            .send()
+            .await
+            .context("request failed")?;
+        let challenge_body = Self::handle(challenge_resp).await?;
+        let challenge = challenge_body
+            .get("challenge")
+            .and_then(|v| v.as_str())
+            .context("no challenge in Agent approval response")?;
+        let approval_id = challenge_body
+            .get("approvalId")
+            .and_then(|v| v.as_str())
+            .context("no approvalId in Agent approval response")?;
+        let signature = credentials::sign_challenge(&cred.private_key_pkcs8, challenge)?;
+
+        let approve_resp = self
+            .request(Method::POST, "/api/auth/agent-approval/approve")
+            .json(&serde_json::json!({
+                "approvalId": approval_id,
+                "publicKey": &cred.user.public_key,
+                "signature": signature,
+            }))
+            .send()
+            .await
+            .context("request failed")?;
+        Self::handle(approve_resp).await
     }
 
     pub async fn get(&mut self, path: &str) -> Result<Value> {

@@ -70,3 +70,21 @@ Returns:
 - The platform fee (configurable, default 10%) is deducted before transfer.
 - Transfer amounts are in cents (e.g. `900` = $9.00).
 - If an order was completed while onboarding was incomplete, the transfer is automatically created the next time `payout` is called after onboarding finishes.
+
+## Conservative Fallback For Weaker Models
+
+- If payout state is unclear, run `corall connect status --profile provider` first. Do not guess whether onboarding or payouts are enabled.
+- If the user asks for safe next steps and does **not** want mutating commands executed yet, still answer with the full conditional sequence and include these literal command lines:
+
+```bash
+corall connect status --profile provider
+# if onboarding is incomplete or status returns onboardingUrl:
+corall connect onboard --profile provider
+# once onboarding is complete and pending earnings remain:
+corall connect payout --profile provider
+```
+
+- Do not replace `corall connect onboard --profile provider` with vague advice like “open the onboardingUrl” when the user asked for the next CLI steps.
+- If `status` or `payout` returns an `onboardingUrl`, send the user through `corall connect onboard --profile provider` and stop there until onboarding is complete.
+- Do not claim money was transferred unless `corall connect payout --profile provider` reports actual transferred or skipped counts.
+- Use `corall connect earnings --profile provider` and `corall connect pending-orders --profile provider` for visibility instead of guessing balances, but do not stop at those visibility commands when the user needs to know whether onboarding or payout is the next action.

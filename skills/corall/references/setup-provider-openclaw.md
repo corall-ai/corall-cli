@@ -1,10 +1,32 @@
 # Setup: OpenClaw as Provider
 
-This guide registers an OpenClaw instance as an agent on the Corall marketplace so it can receive and fulfill orders via webhook.
+This guide registers an OpenClaw instance as an agent on the Corall marketplace so it can receive and fulfill orders through the resident Corall polling plugin.
+
+Provider order execution is **polling-based**. Corall writes order events to the eventbus; the resident `corall-polling` plugin pulls them and delivers them locally to OpenClaw. Corall does not perform an HTTP callback into the provider.
+
+If the provider is not using OpenClaw, do not force the OpenClaw plugin path.
+Use `corall eventbus poll` instead and keep the worker alive with
+`nohup` or another supervisor. In that generic mode, Corall still uses the same
+eventbus polling token, but the local delivery target is either `--hook-url` or
+`--exec/--exec-arg`, not `/hooks/agent`.
 
 Walk through these steps in order. Stop and ask the user if anything looks wrong or unexpected — do not make changes to config files without confirming the current state is healthy first.
 
 ## 1. OpenClaw Preflight
+
+Verify that the active CLI is the current Ed25519 build before changing OpenClaw config:
+
+```bash
+corall --version
+corall auth register --help
+```
+
+The register help must show the site as a positional argument and `--name` as
+the display-name flag. If the command shape differs from this reference, stop
+here and reinstall/upgrade from the current Corall quickstart. If a verified
+newer binary is installed under `~/.local/bin` but `corall` resolves elsewhere,
+run `export PATH="$HOME/.local/bin:$PATH"; hash -r` or use the verified binary
+explicitly for the rest of setup.
 
 Confirm OpenClaw is running:
 
@@ -14,49 +36,81 @@ openclaw status
 
 If this reports errors, stop here and ask the user to resolve them before continuing.
 
-**Verify the machine is reachable from the internet:**
+**Verify the local OpenClaw delivery config can be used safely:**
 
 ```bash
-EXTERNAL_IP=$(curl -fsSL https://api.ipify.org)
-echo "External IP: $EXTERNAL_IP"
-hostname -I
+openclaw status
+cat ~/.openclaw/openclaw.json | jq '.hooks'
 ```
 
-Show the user the output and ask: "Is this machine a cloud VM (AWS/GCP/Azure/VPS) with the webhook port open to the internet, or is it behind a home/office router?" Do not proceed until the user confirms. Home/office NAT is not supported.
-
-Cloud VMs typically have a private IP (e.g. `10.x.x.x`) with the public IP routed at the network level — `bind: "lan"` works, but you may need to open the webhook port in the provider's firewall or security group.
+Corall does not call the provider over a public webhook in OpenClaw polling mode. The only local requirement is that the resident `corall-polling` plugin can deliver pulled events into the OpenClaw Gateway at `/hooks/agent`, which `corall openclaw setup` configures in the next step.
 
 ## 2. Configure the OpenClaw Config File
 
-Run this command to merge the required hooks and gateway settings into `~/.openclaw/openclaw.json`:
+Run this command to merge the required polling and local delivery settings into `~/.openclaw/openclaw.json`:
 
 ```bash
-corall openclaw setup
+corall openclaw setup --eventbus-url http://<corall-backend-host>:3001
 ```
+
+Important naming note: `--webhook-token` and `webhookToken` are legacy names.
+In OpenClaw polling mode this value is the **eventbus polling bearer token**.
+Do **not** configure or ask for a public `--webhook-url`.
 
 `--webhook-token` is optional. The output is JSON with one of three shapes depending on the token source:
 
 | `tokenGenerated` | `tokenKept` | `webhookToken` in output | Meaning |
 | --- | --- | --- | --- |
 | `true` | `false` | yes | New token generated — copy it now |
-| `false` | `true` | no | Existing token preserved — already registered |
+| `false` | `true` | yes | Existing token preserved — already registered |
 | `false` | `false` | no | Token was passed via `--webhook-token` — already known |
 
-**Extract the token for later use:**
+**Extract the polling token for later use:**
 
 ```bash
-WEBHOOK_TOKEN=$(corall openclaw setup | jq -r '.webhookToken')
+POLLING_TOKEN=$(corall openclaw setup --eventbus-url http://<corall-backend-host>:3001 | jq -r '.webhookToken')
 ```
 
-`webhookToken` is present whenever the token was generated or kept from the existing config. If you supplied `--webhook-token` yourself, the field is omitted (you already know it).
+`webhookToken` is present whenever the polling token was generated or kept from the existing config. If you supplied `--webhook-token` yourself, the field is omitted (you already know it).
 
 To force a specific token (e.g. rotating or re-registering an existing agent):
 
 ```bash
-corall openclaw setup --webhook-token <your-token>
+corall openclaw setup \
+  --webhook-token <your-token> \
+  --eventbus-url http://<corall-backend-host>:3001
 ```
 
 If the OpenClaw config file lives elsewhere, pass `--config <path>` explicitly.
+
+## 2b. Install the Resident Corall Polling Plugin
+
+`corall openclaw setup` installs the bundled `corall-polling` plugin from the
+CLI itself and writes the matching `plugins.entries.corall-polling` config. The
+plugin polls the eventbus, then delivers each order event into the local
+OpenClaw `/hooks/agent` endpoint using the `hooks.token` from Step 2. This is
+local OpenClaw delivery from the resident plugin, not a public webhook callback
+from Corall to the provider.
+
+Expected plugin config after setup:
+
+```json
+{
+  "plugins": {
+    "entries": {
+      "corall-polling": {
+        "enabled": true,
+        "config": {
+          "baseUrl": "http://<corall-backend-host>:3001",
+          "credentialProfile": "provider"
+        }
+      }
+    }
+  }
+}
+```
+
+The plugin can read `agentId` from `~/.corall/credentials/provider.json` after the agent is created, and it reuses OpenClaw's local `hooks.token` as the eventbus polling bearer token by default.
 
 ## 3. Register or Login
 
@@ -66,28 +120,32 @@ Check for existing credentials:
 cat ~/.corall/credentials/provider.json 2>/dev/null || echo "No credentials found"
 ```
 
-If credentials exist for the target site, skip to **3b**.
+If local credentials already exist for the target site on this machine, skip to **3b**.
 
-**3a. Register (no existing account):**
+**3a. Register (no existing local credentials):**
 
 ```bash
 corall auth register https://yourdomain.com \
-  --email your-agent@example.com \
-  --password <strong-password> \
   --name "My OpenClaw Agent" \
   --profile provider
 ```
 
-Use a dedicated account for agent operations — never the employer account. Password must be at least 6 characters. On failure with "Email already registered", use login instead.
+The CLI generates a local Ed25519 keypair and stores it in
+`~/.corall/credentials/provider.json`. Only the site and display name are
+required.
+The site is the positional argument immediately after `register`, and the
+display name is passed with `--name`. Do not use `--site-url` or
+`--display-name`; those flags do not exist.
 
-**3b. Login (existing account):**
+**3b. Login (existing local credentials):**
 
 ```bash
-corall auth login https://yourdomain.com \
-  --email your-agent@example.com \
-  --password <password> \
-  --profile provider
+corall auth login https://yourdomain.com --profile provider
 ```
+
+`login` refreshes auth using the private key already stored in
+`~/.corall/credentials/provider.json`. It is not a password fallback and it
+does not recreate a missing credential file.
 
 Verify auth is working:
 
@@ -97,6 +155,11 @@ corall auth me --profile provider
 
 > Before running any command that authenticates, tell the user which site you are authenticating with. Never display or log credential values.
 
+If the user also wants browser dashboard access from this same local profile,
+use `references/agent-approval.md` with `--profile provider` after local
+credentials are verified. This may map to the same Corall user they use for
+ordering, or to a different one.
+
 ## 4. Join Developer Club (required before activating agents)
 
 Agents cannot be activated without an active Developer Club membership. Subscribe first:
@@ -105,7 +168,7 @@ Agents cannot be activated without an active Developer Club membership. Subscrib
 corall subscriptions checkout quarterly --profile provider
 ```
 
-The CLI prints a short checkout link (e.g. `https://api.corall.ai/checkout/<subscription_id>`) — open it in the browser and complete payment with a test card (`4242 4242 4242 4242`) or a real card. After payment, the webhook activates the Developer Club membership automatically.
+The CLI prints a short checkout link (e.g. `https://api.corall.ai/checkout/<subscription_id>`) — open it in the browser and complete payment with a test card (`4242 4242 4242 4242`) or a real card. After payment, the Stripe payment callback activates the Developer Club membership automatically.
 
 Verify the membership is active:
 
@@ -113,45 +176,44 @@ Verify the membership is active:
 corall subscriptions status --profile provider
 ```
 
-The response should show `"hasActiveSubscription": true`. If not, wait a few seconds for the webhook callback and retry.
+The response should show `"hasActiveSubscription": true`. If not, wait a few seconds for the Stripe payment callback and retry.
 
 ## 5. Create or Update Agent
 
 Check if an agent already exists:
 
 ```bash
-corall agents list --mine
+corall agents list --mine --profile provider
 ```
 
 Look for an agent with status `ACTIVE` or `DRAFT` (skip `SUSPENDED` — they are archived).
 
-**If an agent exists**, update its webhook config:
+**If an agent exists**, update its Corall eventbus polling token:
 
 ```bash
 corall agents update <agent_id> \
-  --webhook-url "http://<your-ip>:18789/hooks/agent" \
-  --webhook-token "<webhookToken from Step 2>" \
+  --webhook-token "$POLLING_TOKEN" \
   --profile provider
 ```
 
-**If no agent exists**, create one:
+**If no agent exists**, create one with the Corall eventbus polling token:
 
 ```bash
 corall agents create \
   --name "My OpenClaw Agent" \
   --description "An autonomous AI agent powered by OpenClaw" \
   --tags "openclaw,automation" \
-  --price 100 \   # price in cents (100 = $1.00), minimum is 50 ($0.50)
+  --price 100 \
   --delivery-time 1 \
-  --webhook-url "http://<your-ip>:18789/hooks/agent" \
-  --webhook-token "<webhookToken from Step 2>" \
+  --webhook-token "$POLLING_TOKEN" \
   --profile provider
 ```
 
-- `--webhook-url`: Your OpenClaw endpoint. Use HTTPS if you have a reverse proxy — plain HTTP sends the token unencrypted.
-- `--webhook-token`: The `webhookToken` value from Step 2's JSON output. If you passed `--webhook-token` to `corall openclaw setup`, use that same value.
+- `--price`: price in cents. `100` means $1.00, and the minimum is 50 ($0.50).
+- `--webhook-token`: Legacy flag name for the eventbus polling bearer token Corall stores for your agent. In the current implementation this should match the `hooks.token` value from Step 2.
+- `--webhook-url`: Do not set this for OpenClaw polling mode.
 
-The `agentId` is automatically saved to `~/.corall/credentials.json`.
+The `agentId` is automatically saved to `~/.corall/credentials/provider.json`.
 
 ## 6. Activate
 
@@ -170,4 +232,13 @@ corall auth me --profile provider
 corall agents get <agent_id> --profile provider
 ```
 
-Confirm with the user that the webhook URL is reachable and the firewall or security group allows inbound traffic on the webhook port.
+Confirm with the user that the `corall-polling` plugin is enabled, its `baseUrl` points at the correct Corall eventbus service, and `hooks.token` still matches the agent's polling token (`--webhook-token`).
+
+## Conservative Fallback For Weaker Models
+
+- Run the documented commands in order. Do not compress steps or substitute flags from memory.
+- If `corall auth register --help` does not match this guide, stop, quote the exact help output, and reinstall or upgrade from the current quickstart. Do not ask the user for email/password fields.
+- If `openclaw status` reports errors, stop there and ask the user to fix OpenClaw before changing config or auth state.
+- If `corall openclaw setup` omits `webhookToken` because you passed `--webhook-token`, use the token you passed. Do not invent missing JSON fields.
+- If `corall subscriptions status --profile provider` still shows `"hasActiveSubscription": false`, wait and retry. Do not activate or present the agent as live until the membership is active.
+- If `corall agents list --mine --profile provider` already shows the provider's agent in `DRAFT` or `ACTIVE`, update that agent's polling token instead of creating a duplicate.

@@ -1,0 +1,108 @@
+{
+  "id": "corall-polling",
+  "uiHints": {
+    "baseUrl": {
+      "label": "Eventbus Base URL",
+      "placeholder": "http://127.0.0.1:8080"
+    },
+    "agentId": {
+      "label": "Corall Agent ID"
+    },
+    "agentToken": {
+      "label": "Corall Agent Token",
+      "sensitive": true
+    },
+    "consumerId": {
+      "label": "Consumer ID",
+      "help": "Stable poller identity. Defaults to a hostname-based value when omitted."
+    },
+    "waitSeconds": {
+      "label": "Long Poll Wait (sec)",
+      "advanced": true
+    },
+    "hookUrl": {
+      "label": "Local Hook URL",
+      "placeholder": "http://127.0.0.1:18789/hooks/agent",
+      "advanced": true
+    },
+    "requestTimeoutMs": {
+      "label": "Poll Timeout (ms)",
+      "advanced": true
+    },
+    "ackTimeoutMs": {
+      "label": "Ack Timeout (ms)",
+      "advanced": true
+    },
+    "idleDelayMs": {
+      "label": "Idle Delay (ms)",
+      "advanced": true
+    },
+    "errorBackoffMs": {
+      "label": "Error Backoff (ms)",
+      "advanced": true
+    },
+    "maxErrorBackoffMs": {
+      "label": "Max Error Backoff (ms)",
+      "advanced": true
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "baseUrl": {
+        "type": "string",
+        "minLength": 1
+      },
+      "agentId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "agentToken": {
+        "type": "string",
+        "minLength": 1
+      },
+      "credentialProfile": {
+        "type": "string",
+        "minLength": 1
+      },
+      "consumerId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "waitSeconds": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 60
+      },
+      "hookUrl": {
+        "type": "string",
+        "minLength": 1
+      },
+      "requestTimeoutMs": {
+        "type": "integer",
+        "minimum": 1000
+      },
+      "ackTimeoutMs": {
+        "type": "integer",
+        "minimum": 1000
+      },
+      "idleDelayMs": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "errorBackoffMs": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "maxErrorBackoffMs": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "recentEventTtlMs": {
+        "type": "integer",
+        "minimum": 0
+      }
+    }
+  }
+}

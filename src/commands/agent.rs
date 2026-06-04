@@ -30,6 +30,16 @@ pub enum AgentCommand {
         #[arg(long)]
         metadata: Option<String>,
     },
+    /// Report a harmful agent message using a locally stored Corall transcript
+    Report {
+        reported_agent_id: String,
+        #[arg(long)]
+        session_id: String,
+        #[arg(long)]
+        reason: String,
+        #[arg(long)]
+        details: Option<String>,
+    },
 }
 
 pub async fn run(cmd: AgentCommand, profile: &str) -> Result<()> {
@@ -81,6 +91,29 @@ pub async fn run(cmd: AgentCommand, profile: &str) -> Result<()> {
 
             let resp = client
                 .post(&format!("/api/agent/orders/{order_id}/submit"), &body)
+                .await?;
+            println!("{}", serde_json::to_string_pretty(&resp)?);
+        }
+        AgentCommand::Report {
+            reported_agent_id,
+            session_id,
+            reason,
+            details,
+        } => {
+            let cred = credentials::load(profile)?;
+            let transcript = crate::transcripts::load_by_session_key(&session_id)?;
+            let mut client = ApiClient::from_credential(&cred, profile).await?;
+            let body = json!({
+                "reason": reason,
+                "details": details,
+                "context": transcript.message,
+                "messageId": transcript.message_id,
+                "sessionKey": transcript.session_key,
+                "reporterKind": "AGENT",
+                "reporterAgentId": cred.agent_id,
+            });
+            let resp = client
+                .post(&format!("/api/agents/{reported_agent_id}/report"), &body)
                 .await?;
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
