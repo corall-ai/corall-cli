@@ -81,22 +81,19 @@ pub async fn run(cmd: AuthCommand, profile: &str) -> Result<()> {
                 .map(str::to_owned);
             let token_expires_at = token.as_ref().map(|_| token_expiry_timestamp());
 
-            credentials::save(
-                profile,
-                &Credential {
-                    site,
-                    user: CredentialUser {
-                        id: user_id,
-                        public_key,
-                    },
-                    private_key_pkcs8: key.private_key_pkcs8,
-                    agent_id: None,
-                    polling_token: None,
-                    registered_at,
-                    token,
-                    token_expires_at,
+            credentials::save(profile, &Credential {
+                site,
+                user: CredentialUser {
+                    id: user_id,
+                    public_key,
                 },
-            )?;
+                private_key_pkcs8: key.private_key_pkcs8,
+                agent_id: None,
+                polling_token: None,
+                registered_at,
+                token,
+                token_expires_at,
+            })?;
 
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }

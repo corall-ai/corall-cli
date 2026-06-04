@@ -31,26 +31,23 @@ fn reviews_create_uses_explicit_rating_without_penalty_payload() -> Result<(), B
     let server = FakeReviewsServer::start()?;
     write_credentials(&home, "employer", &server.base_url(), "cached-review-token")?;
 
-    let output = run_corall(
-        &home,
-        &[
-            "--profile",
-            "employer",
-            "reviews",
-            "create",
-            "ord-rating-1",
-            "--rating",
-            "4.9",
-            "--comment",
-            "Exact user score.",
-            "--reviewer-kind",
-            "system",
-            "--requirement-miss",
-            "3",
-            "--correctness-defect",
-            "2",
-        ],
-    )?;
+    let output = run_corall(&home, &[
+        "--profile",
+        "employer",
+        "reviews",
+        "create",
+        "ord-rating-1",
+        "--rating",
+        "4.9",
+        "--comment",
+        "Exact user score.",
+        "--reviewer-kind",
+        "system",
+        "--requirement-miss",
+        "3",
+        "--correctness-defect",
+        "2",
+    ])?;
 
     assert!(output.status.success(), "reviews create failed: {output:?}");
     let request = server.requests().pop().ok_or("expected review request")?;
@@ -75,24 +72,21 @@ fn reviews_create_uses_penalty_payload_when_rating_is_omitted() -> Result<(), Bo
     let server = FakeReviewsServer::start()?;
     write_credentials(&home, "employer", &server.base_url(), "cached-review-token")?;
 
-    let output = run_corall(
-        &home,
-        &[
-            "--profile",
-            "employer",
-            "reviews",
-            "create",
-            "ord-penalty-1",
-            "--comment",
-            "Needs rework.",
-            "--reviewer-kind",
-            "employer-agent",
-            "--correctness-defect",
-            "1",
-            "--rework-burden",
-            "2",
-        ],
-    )?;
+    let output = run_corall(&home, &[
+        "--profile",
+        "employer",
+        "reviews",
+        "create",
+        "ord-penalty-1",
+        "--comment",
+        "Needs rework.",
+        "--reviewer-kind",
+        "employer-agent",
+        "--correctness-defect",
+        "1",
+        "--rework-burden",
+        "2",
+    ])?;
 
     assert!(output.status.success(), "reviews create failed: {output:?}");
     let request = server.requests().pop().ok_or("expected review request")?;
@@ -117,10 +111,13 @@ fn reviews_create_uses_penalty_payload_when_rating_is_omitted() -> Result<(), Bo
 #[test]
 fn reviews_create_rejects_out_of_range_rating() -> Result<(), Box<dyn Error>> {
     let temp = TempDir::new("corall-reviews-bad-rating")?;
-    let output = run_corall(
-        temp.path(),
-        &["reviews", "create", "ord-invalid-rating", "--rating", "5.1"],
-    )?;
+    let output = run_corall(temp.path(), &[
+        "reviews",
+        "create",
+        "ord-invalid-rating",
+        "--rating",
+        "5.1",
+    ])?;
 
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr)?;
@@ -131,16 +128,13 @@ fn reviews_create_rejects_out_of_range_rating() -> Result<(), Box<dyn Error>> {
 #[test]
 fn reviews_create_rejects_out_of_range_penalty() -> Result<(), Box<dyn Error>> {
     let temp = TempDir::new("corall-reviews-bad-penalty")?;
-    let output = run_corall(
-        temp.path(),
-        &[
-            "reviews",
-            "create",
-            "ord-invalid-penalty",
-            "--timeliness-miss",
-            "4",
-        ],
-    )?;
+    let output = run_corall(temp.path(), &[
+        "reviews",
+        "create",
+        "ord-invalid-penalty",
+        "--timeliness-miss",
+        "4",
+    ])?;
 
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr)?;

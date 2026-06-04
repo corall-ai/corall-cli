@@ -48,25 +48,22 @@ fn eventbus_binary_polls_and_acks_redis_without_llm_config() -> Result<(), Box<d
     redis_command(&redis, &["XADD", &stream, "*", "payload", &event_payload])?;
 
     let listen = reserve_local_addr()?;
-    let mut child = ChildGuard::spawn(
-        env!("CARGO_BIN_EXE_corall"),
-        &[
-            "eventbus",
-            "serve",
-            "--listen",
-            &listen.to_string(),
-            "--redis-url",
-            &redis_url,
-            "--consumer-group",
-            &group,
-            "--default-wait-ms",
-            "0",
-            "--max-wait-ms",
-            "100",
-            "--claim-idle-ms",
-            "0",
-        ],
-    )?;
+    let mut child = ChildGuard::spawn(env!("CARGO_BIN_EXE_corall"), &[
+        "eventbus",
+        "serve",
+        "--listen",
+        &listen.to_string(),
+        "--redis-url",
+        &redis_url,
+        "--consumer-group",
+        &group,
+        "--default-wait-ms",
+        "0",
+        "--max-wait-ms",
+        "100",
+        "--claim-idle-ms",
+        "0",
+    ])?;
 
     wait_for_health(listen, child.as_mut())?;
 

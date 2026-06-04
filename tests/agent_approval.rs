@@ -53,33 +53,27 @@ fn agent_ed25519_approval_signs_challenge_without_leaking_secrets() -> Result<()
     let approve_help_stdout = String::from_utf8(approve_help.stdout)?;
     assert!(!approve_help_stdout.contains("--code"));
 
-    let register = run_corall(
-        &home,
-        &[
-            "--profile",
-            "agent-test",
-            "auth",
-            "register",
-            &server.base_url(),
-            "--name",
-            "Agent Test",
-        ],
-    )?;
+    let register = run_corall(&home, &[
+        "--profile",
+        "agent-test",
+        "auth",
+        "register",
+        &server.base_url(),
+        "--name",
+        "Agent Test",
+    ])?;
     assert!(register.status.success(), "register failed: {register:?}");
     let register_stdout = String::from_utf8(register.stdout)?;
     assert!(!register_stdout.contains("privateKeyPkcs8"));
     assert!(!register_stdout.contains("password"));
 
-    let approve = run_corall(
-        &home,
-        &[
-            "--profile",
-            "agent-test",
-            "auth",
-            "approve",
-            &server.base_url(),
-        ],
-    )?;
+    let approve = run_corall(&home, &[
+        "--profile",
+        "agent-test",
+        "auth",
+        "approve",
+        &server.base_url(),
+    ])?;
     assert!(approve.status.success(), "approve failed: {approve:?}");
     let approve_stdout = String::from_utf8(approve.stdout)?;
     assert!(approve_stdout.contains(r#""approved": true"#));
@@ -91,16 +85,13 @@ fn agent_ed25519_approval_signs_challenge_without_leaking_secrets() -> Result<()
     assert!(!approve_stdout.contains("privateKeyPkcs8"));
     assert!(!approve_stdout.contains("signature"));
 
-    let wrong_site = run_corall(
-        &home,
-        &[
-            "--profile",
-            "agent-test",
-            "auth",
-            "approve",
-            "http://127.0.0.1:9",
-        ],
-    )?;
+    let wrong_site = run_corall(&home, &[
+        "--profile",
+        "agent-test",
+        "auth",
+        "approve",
+        "http://127.0.0.1:9",
+    ])?;
     assert!(!wrong_site.status.success());
     let wrong_site_stderr = String::from_utf8(wrong_site.stderr)?;
     assert!(wrong_site_stderr.contains("belong to"));

@@ -39,21 +39,17 @@ mod unix_only {
 
         let agent_id = unique_id("agent_exec");
         let polling_token = "polling-secret";
-        let eventbus = FakeEventbusServer::start(
-            &agent_id,
-            polling_token,
-            vec![json!({
-                "id": "stream-exec-1",
-                "eventId": "order.paid:exec-1",
-                "type": "order.paid",
-                "hook": {
-                    "message": "exec event",
-                    "name": "Corall",
-                    "sessionKey": "hook:corall:exec-1",
-                    "deliver": false
-                }
-            })],
-        )?;
+        let eventbus = FakeEventbusServer::start(&agent_id, polling_token, vec![json!({
+            "id": "stream-exec-1",
+            "eventId": "order.paid:exec-1",
+            "type": "order.paid",
+            "hook": {
+                "message": "exec event",
+                "name": "Corall",
+                "sessionKey": "hook:corall:exec-1",
+                "deliver": false
+            }
+        })])?;
         write_credentials(&home, "provider", &agent_id, polling_token)?;
 
         let worker_script = temp.path().join("worker.py");
@@ -146,21 +142,17 @@ mod unix_only {
         let agent_id = unique_id("agent_hook");
         let polling_token = "hook-polling-secret";
         let hook_token = "local-hook-token";
-        let eventbus = FakeEventbusServer::start(
-            &agent_id,
-            polling_token,
-            vec![json!({
-                "id": "stream-hook-1",
-                "eventId": "order.paid:hook-1",
-                "type": "order.paid",
-                "hook": {
-                    "message": "hook event",
-                    "name": "Corall",
-                    "sessionKey": "hook:corall:hook-1",
-                    "deliver": false
-                }
-            })],
-        )?;
+        let eventbus = FakeEventbusServer::start(&agent_id, polling_token, vec![json!({
+            "id": "stream-hook-1",
+            "eventId": "order.paid:hook-1",
+            "type": "order.paid",
+            "hook": {
+                "message": "hook event",
+                "name": "Corall",
+                "sessionKey": "hook:corall:hook-1",
+                "deliver": false
+            }
+        })])?;
         let hook_server = FakeHookServer::start(Some(hook_token))?;
 
         let stdout_path = temp.path().join("poller.stdout.log");
@@ -252,48 +244,44 @@ mod unix_only {
         let agent_id = unique_id("agent_round_cap");
         let polling_token = "round-cap-token";
         let hook_token = "local-hook-token";
-        let eventbus = FakeEventbusServer::start(
-            &agent_id,
-            polling_token,
-            vec![
-                json!({
-                    "id": "stream-hook-round-1",
-                    "eventId": "order.message:hook-round-1",
-                    "orderId": "ord-round-1",
-                    "type": "order.message",
-                    "orderPolicy": {
-                        "includedInputTokens": 16000,
-                        "includedOutputTokens": 8000,
-                        "maxTotalTokens": 24000,
-                        "maxInteractionRounds": 1
-                    },
-                    "hook": {
-                        "message": "first round message",
-                        "name": "Corall",
-                        "sessionKey": "hook:corall:ord-round-1:message:1",
-                        "deliver": false
-                    }
-                }),
-                json!({
-                    "id": "stream-hook-round-2",
-                    "eventId": "order.message:hook-round-2",
-                    "orderId": "ord-round-1",
-                    "type": "order.message",
-                    "orderPolicy": {
-                        "includedInputTokens": 16000,
-                        "includedOutputTokens": 8000,
-                        "maxTotalTokens": 24000,
-                        "maxInteractionRounds": 1
-                    },
-                    "hook": {
-                        "message": "second leaked message",
-                        "name": "Corall",
-                        "sessionKey": "hook:corall:ord-round-1:message:2",
-                        "deliver": false
-                    }
-                }),
-            ],
-        )?;
+        let eventbus = FakeEventbusServer::start(&agent_id, polling_token, vec![
+            json!({
+                "id": "stream-hook-round-1",
+                "eventId": "order.message:hook-round-1",
+                "orderId": "ord-round-1",
+                "type": "order.message",
+                "orderPolicy": {
+                    "includedInputTokens": 16000,
+                    "includedOutputTokens": 8000,
+                    "maxTotalTokens": 24000,
+                    "maxInteractionRounds": 1
+                },
+                "hook": {
+                    "message": "first round message",
+                    "name": "Corall",
+                    "sessionKey": "hook:corall:ord-round-1:message:1",
+                    "deliver": false
+                }
+            }),
+            json!({
+                "id": "stream-hook-round-2",
+                "eventId": "order.message:hook-round-2",
+                "orderId": "ord-round-1",
+                "type": "order.message",
+                "orderPolicy": {
+                    "includedInputTokens": 16000,
+                    "includedOutputTokens": 8000,
+                    "maxTotalTokens": 24000,
+                    "maxInteractionRounds": 1
+                },
+                "hook": {
+                    "message": "second leaked message",
+                    "name": "Corall",
+                    "sessionKey": "hook:corall:ord-round-1:message:2",
+                    "deliver": false
+                }
+            }),
+        ])?;
         let hook_server = FakeHookServer::start(Some(hook_token))?;
 
         let stdout_path = temp.path().join("poller.stdout.log");
@@ -362,34 +350,30 @@ mod unix_only {
         let agent_id = unique_id("agent_token_cap");
         let polling_token = "token-cap-token";
         let hook_token = "local-hook-token";
-        let eventbus = FakeEventbusServer::start(
-            &agent_id,
-            polling_token,
-            vec![json!({
-                "id": "stream-hook-token-1",
-                "eventId": "order.message:hook-token-1",
-                "orderId": "ord-token-1",
-                "type": "order.message",
-                "orderPolicy": {
-                    "includedInputTokens": 5,
-                    "includedOutputTokens": 8000,
-                    "maxTotalTokens": 10,
-                    "maxInteractionRounds": 3
-                },
-                "orderUsageBefore": {
-                    "inputTokens": 4,
-                    "outputTokens": 3,
-                    "totalTokens": 7,
-                    "interactionRounds": 1
-                },
-                "hook": {
-                    "message": "one two three",
-                    "name": "Corall",
-                    "sessionKey": "hook:corall:ord-token-1:message:1",
-                    "deliver": false
-                }
-            })],
-        )?;
+        let eventbus = FakeEventbusServer::start(&agent_id, polling_token, vec![json!({
+            "id": "stream-hook-token-1",
+            "eventId": "order.message:hook-token-1",
+            "orderId": "ord-token-1",
+            "type": "order.message",
+            "orderPolicy": {
+                "includedInputTokens": 5,
+                "includedOutputTokens": 8000,
+                "maxTotalTokens": 10,
+                "maxInteractionRounds": 3
+            },
+            "orderUsageBefore": {
+                "inputTokens": 4,
+                "outputTokens": 3,
+                "totalTokens": 7,
+                "interactionRounds": 1
+            },
+            "hook": {
+                "message": "one two three",
+                "name": "Corall",
+                "sessionKey": "hook:corall:ord-token-1:message:1",
+                "deliver": false
+            }
+        })])?;
         let hook_server = FakeHookServer::start(Some(hook_token))?;
 
         let stdout_path = temp.path().join("poller.stdout.log");
@@ -450,19 +434,16 @@ mod unix_only {
         let home = temp.path().join("home");
         fs::create_dir_all(&home)?;
 
-        let output = run_corall(
-            &home,
-            &[
-                "eventbus",
-                "poll",
-                "--base-url",
-                "http://127.0.0.1:8787",
-                "--agent-id",
-                "agent-missing-target",
-                "--webhook-token",
-                "polling-token",
-            ],
-        )?;
+        let output = run_corall(&home, &[
+            "eventbus",
+            "poll",
+            "--base-url",
+            "http://127.0.0.1:8787",
+            "--agent-id",
+            "agent-missing-target",
+            "--webhook-token",
+            "polling-token",
+        ])?;
 
         assert!(!output.status.success());
         let stderr = String::from_utf8(output.stderr)?;
@@ -476,23 +457,20 @@ mod unix_only {
         let home = temp.path().join("home");
         fs::create_dir_all(&home)?;
 
-        let output = run_corall(
-            &home,
-            &[
-                "eventbus",
-                "poll",
-                "--base-url",
-                "http://127.0.0.1:8787",
-                "--agent-id",
-                "agent-conflicting-target",
-                "--webhook-token",
-                "polling-token",
-                "--hook-url",
-                "http://127.0.0.1:9000/hooks/agent",
-                "--exec",
-                "true",
-            ],
-        )?;
+        let output = run_corall(&home, &[
+            "eventbus",
+            "poll",
+            "--base-url",
+            "http://127.0.0.1:8787",
+            "--agent-id",
+            "agent-conflicting-target",
+            "--webhook-token",
+            "polling-token",
+            "--hook-url",
+            "http://127.0.0.1:9000/hooks/agent",
+            "--exec",
+            "true",
+        ])?;
 
         assert!(!output.status.success());
         let stderr = String::from_utf8(output.stderr)?;
@@ -506,19 +484,16 @@ mod unix_only {
         let home = temp.path().join("home");
         fs::create_dir_all(&home)?;
 
-        let output = run_corall(
-            &home,
-            &[
-                "eventbus",
-                "poll",
-                "--base-url",
-                "http://127.0.0.1:8787",
-                "--agent-id",
-                "agent-missing-token",
-                "--exec",
-                "true",
-            ],
-        )?;
+        let output = run_corall(&home, &[
+            "eventbus",
+            "poll",
+            "--base-url",
+            "http://127.0.0.1:8787",
+            "--agent-id",
+            "agent-missing-token",
+            "--exec",
+            "true",
+        ])?;
 
         assert!(!output.status.success());
         let stderr = String::from_utf8(output.stderr)?;
@@ -533,14 +508,11 @@ mod unix_only {
         fs::create_dir_all(&home)?;
 
         let agent_id = unique_id("agent_invalid_json");
-        let eventbus = FakeEventbusServer::start_with_poll_responses(
-            &agent_id,
-            "polling-secret",
-            vec![
+        let eventbus =
+            FakeEventbusServer::start_with_poll_responses(&agent_id, "polling-secret", vec![
                 PollResponse::raw(200, "application/json", "not-json"),
                 PollResponse::raw(200, "application/json", "still-not-json"),
-            ],
-        )?;
+            ])?;
 
         let stdout_path = temp.path().join("poller.stdout.log");
         let stderr_path = temp.path().join("poller.stderr.log");
@@ -602,45 +574,38 @@ mod unix_only {
 
         let agent_id = unique_id("agent_hook_fail");
         let polling_token = "hook-fail-token";
-        let eventbus = FakeEventbusServer::start(
-            &agent_id,
-            polling_token,
-            vec![json!({
-                "id": "stream-hook-fail-1",
-                "eventId": "order.paid:hook-fail-1",
-                "hook": {
-                    "message": "hook failure",
-                    "name": "Corall",
-                    "sessionKey": "hook:corall:hook-fail-1",
-                    "deliver": false
-                }
-            })],
-        )?;
+        let eventbus = FakeEventbusServer::start(&agent_id, polling_token, vec![json!({
+            "id": "stream-hook-fail-1",
+            "eventId": "order.paid:hook-fail-1",
+            "hook": {
+                "message": "hook failure",
+                "name": "Corall",
+                "sessionKey": "hook:corall:hook-fail-1",
+                "deliver": false
+            }
+        })])?;
         let hook_server = FakeHookServer::start(Some("expected-hook-token"))?;
 
-        let output = run_corall(
-            &home,
-            &[
-                "eventbus",
-                "poll",
-                "--base-url",
-                &eventbus.base_url(),
-                "--agent-id",
-                &agent_id,
-                "--webhook-token",
-                polling_token,
-                "--hook-url",
-                &hook_server.url(),
-                "--hook-token",
-                "wrong-hook-token",
-                "--wait-ms",
-                "5",
-                "--request-timeout-ms",
-                "1000",
-                "--ack-timeout-ms",
-                "1000",
-            ],
-        )?;
+        let output = run_corall(&home, &[
+            "eventbus",
+            "poll",
+            "--base-url",
+            &eventbus.base_url(),
+            "--agent-id",
+            &agent_id,
+            "--webhook-token",
+            polling_token,
+            "--hook-url",
+            &hook_server.url(),
+            "--hook-token",
+            "wrong-hook-token",
+            "--wait-ms",
+            "5",
+            "--request-timeout-ms",
+            "1000",
+            "--ack-timeout-ms",
+            "1000",
+        ])?;
 
         assert!(!output.status.success());
         let stderr = String::from_utf8(output.stderr)?;
@@ -658,45 +623,38 @@ mod unix_only {
 
         let agent_id = unique_id("agent_exec_fail");
         let polling_token = "exec-fail-token";
-        let eventbus = FakeEventbusServer::start(
-            &agent_id,
-            polling_token,
-            vec![json!({
-                "id": "stream-exec-fail-1",
-                "eventId": "order.paid:exec-fail-1",
-                "hook": {
-                    "message": "exec failure",
-                    "name": "Corall",
-                    "sessionKey": "hook:corall:exec-fail-1",
-                    "deliver": false
-                }
-            })],
-        )?;
+        let eventbus = FakeEventbusServer::start(&agent_id, polling_token, vec![json!({
+            "id": "stream-exec-fail-1",
+            "eventId": "order.paid:exec-fail-1",
+            "hook": {
+                "message": "exec failure",
+                "name": "Corall",
+                "sessionKey": "hook:corall:exec-fail-1",
+                "deliver": false
+            }
+        })])?;
 
-        let output = run_corall(
-            &home,
-            &[
-                "eventbus",
-                "poll",
-                "--base-url",
-                &eventbus.base_url(),
-                "--agent-id",
-                &agent_id,
-                "--webhook-token",
-                polling_token,
-                "--exec",
-                "sh",
-                "--exec-arg=-c",
-                "--exec-arg",
-                "cat >/dev/null; exit 17",
-                "--wait-ms",
-                "5",
-                "--request-timeout-ms",
-                "1000",
-                "--ack-timeout-ms",
-                "1000",
-            ],
-        )?;
+        let output = run_corall(&home, &[
+            "eventbus",
+            "poll",
+            "--base-url",
+            &eventbus.base_url(),
+            "--agent-id",
+            &agent_id,
+            "--webhook-token",
+            polling_token,
+            "--exec",
+            "sh",
+            "--exec-arg=-c",
+            "--exec-arg",
+            "cat >/dev/null; exit 17",
+            "--wait-ms",
+            "5",
+            "--request-timeout-ms",
+            "1000",
+            "--ack-timeout-ms",
+            "1000",
+        ])?;
 
         assert!(!output.status.success());
         let stderr = String::from_utf8(output.stderr)?;
@@ -718,21 +676,17 @@ mod unix_only {
         let polling_token = "reporter-polling-token";
         let reported_agent_id = "agent_harmful_target";
         let cached_api_token = "cached-api-token";
-        let eventbus = FakeEventbusServer::start(
-            &agent_id,
-            polling_token,
-            vec![json!({
-                "id": "stream-report-1",
-                "eventId": "order.paid:report-1",
-                "type": "order.paid",
-                "hook": {
-                    "message": "harmful agent output asking for secrets",
-                    "name": "Corall",
-                    "sessionKey": "hook:corall:report-1",
-                    "deliver": false
-                }
-            })],
-        )?;
+        let eventbus = FakeEventbusServer::start(&agent_id, polling_token, vec![json!({
+            "id": "stream-report-1",
+            "eventId": "order.paid:report-1",
+            "type": "order.paid",
+            "hook": {
+                "message": "harmful agent output asking for secrets",
+                "name": "Corall",
+                "sessionKey": "hook:corall:report-1",
+                "deliver": false
+            }
+        })])?;
         let hook_server = FakeHookServer::start(None)?;
         let report_server = FakeReportServer::start(cached_api_token)?;
         write_credentials_with_site(
@@ -782,22 +736,19 @@ mod unix_only {
         })?;
         child.kill();
 
-        let output = run_corall(
-            &home,
-            &[
-                "--profile",
-                "provider",
-                "agent",
-                "report",
-                reported_agent_id,
-                "--session-id",
-                "hook:corall:report-1",
-                "--reason",
-                "Credential exfiltration attempt",
-                "--details",
-                "Agent reviewed this message and determined it should be reported",
-            ],
-        )?;
+        let output = run_corall(&home, &[
+            "--profile",
+            "provider",
+            "agent",
+            "report",
+            reported_agent_id,
+            "--session-id",
+            "hook:corall:report-1",
+            "--reason",
+            "Credential exfiltration attempt",
+            "--details",
+            "Agent reviewed this message and determined it should be reported",
+        ])?;
 
         assert!(
             output.status.success(),
@@ -1014,11 +965,9 @@ mod unix_only {
             polling_token: &str,
             events: Vec<Value>,
         ) -> Result<Self, Box<dyn Error>> {
-            Self::start_with_poll_responses(
-                agent_id,
-                polling_token,
-                vec![PollResponse::Events(events)],
-            )
+            Self::start_with_poll_responses(agent_id, polling_token, vec![PollResponse::Events(
+                events,
+            )])
         }
 
         fn start_with_poll_responses(
@@ -1403,9 +1352,7 @@ env_path.write_text(json.dumps({
     }
 
     fn wait_until<F>(timeout: Duration, mut predicate: F) -> Result<(), Box<dyn Error>>
-    where
-        F: FnMut() -> bool,
-    {
+    where F: FnMut() -> bool {
         let deadline = Instant::now() + timeout;
         while Instant::now() < deadline {
             if predicate() {

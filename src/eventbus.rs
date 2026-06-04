@@ -259,12 +259,9 @@ impl HttpError {
         if self.status == 401 {
             HttpResponse::unauthorized(&self.message)
         } else {
-            HttpResponse::json(
-                self.status,
-                &ErrorResponse {
-                    error: &self.message,
-                },
-            )
+            HttpResponse::json(self.status, &ErrorResponse {
+                error: &self.message,
+            })
         }
     }
 }
@@ -569,13 +566,10 @@ async fn dispatch_request(
             state.store.health().await.map_err(|err| {
                 HttpError::service_unavailable(format!("redis health check failed: {err}"))
             })?;
-            Ok(HttpResponse::json(
-                200,
-                &HealthResponse {
-                    ok: true,
-                    redis: "ok",
-                },
-            ))
+            Ok(HttpResponse::json(200, &HealthResponse {
+                ok: true,
+                redis: "ok",
+            }))
         }
         Route::Poll { agent_id } => {
             if request.method != "GET" {
@@ -588,13 +582,10 @@ async fn dispatch_request(
                 .poll(&agent_id, options.clone())
                 .await
                 .map_err(|err| HttpError::service_unavailable(format!("poll failed: {err}")))?;
-            Ok(HttpResponse::json(
-                200,
-                &PollResponse {
-                    consumer_id: options.consumer_id,
-                    events,
-                },
-            ))
+            Ok(HttpResponse::json(200, &PollResponse {
+                consumer_id: options.consumer_id,
+                events,
+            }))
         }
         Route::Ack { agent_id, event_id } => {
             if request.method != "POST" {
@@ -606,14 +597,11 @@ async fn dispatch_request(
                 .ack(&agent_id, &event_id)
                 .await
                 .map_err(|err| HttpError::service_unavailable(format!("ack failed: {err}")))?;
-            Ok(HttpResponse::json(
-                200,
-                &AckResponse {
-                    ok: true,
-                    acked,
-                    event_id,
-                },
-            ))
+            Ok(HttpResponse::json(200, &AckResponse {
+                ok: true,
+                acked,
+                event_id,
+            }))
         }
     }
 }
@@ -1237,15 +1225,12 @@ mod tests {
 
         let (agent_id, poll) = store.last_poll.lock().unwrap().clone().unwrap();
         assert_eq!(agent_id, "agent-1");
-        assert_eq!(
-            poll,
-            PollOptions {
-                consumer_id: "worker-1".into(),
-                wait_ms: 1_500,
-                count: 2,
-                claim_idle_ms: Some(60_000),
-            }
-        );
+        assert_eq!(poll, PollOptions {
+            consumer_id: "worker-1".into(),
+            wait_ms: 1_500,
+            count: 2,
+            claim_idle_ms: Some(60_000),
+        });
     }
 
     #[tokio::test]

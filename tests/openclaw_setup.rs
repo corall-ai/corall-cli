@@ -52,15 +52,12 @@ fn setup_installs_bundled_polling_plugin_through_openclaw_cli() -> Result<(), Bo
     assert!(staged.join("dist/index.js").is_file());
 
     let captured = fs::read_to_string(&capture_path)?;
-    assert_eq!(
-        captured.lines().collect::<Vec<_>>(),
-        vec![
-            "plugins",
-            "install",
-            "--force",
-            staged.to_str().ok_or("staged plugin path is not utf-8")?
-        ]
-    );
+    assert_eq!(captured.lines().collect::<Vec<_>>(), vec![
+        "plugins",
+        "install",
+        "--force",
+        staged.to_str().ok_or("staged plugin path is not utf-8")?
+    ]);
 
     let cfg: Value = serde_json::from_str(&fs::read_to_string(&config_path)?)?;
     let plugin = &cfg["plugins"]["entries"]["corall-polling"];
