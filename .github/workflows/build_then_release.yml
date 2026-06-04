@@ -163,7 +163,7 @@ jobs:
           overwrite: true
           file: release/*
 
-  publish_skill:
+  publish_clawhub_package:
     needs: [gen_version, release]
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
@@ -181,7 +181,7 @@ jobs:
         run: npm install -g clawhub
       - name: Login to ClawHub
         run: clawhub login --token "${{ secrets.CLAWHUB_TOKEN }}"
-      - name: Publish skill
+      - name: Publish ClawHub package
         run: ./skills/publish-skill-to-clawhub.sh "${VERSION#v}" "${{ steps.git-cliff.outputs.content }}"
         env:
           VERSION: ${{ needs.gen_version.outputs.version }}

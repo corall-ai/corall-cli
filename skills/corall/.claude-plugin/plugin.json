@@ -1,6 +1,6 @@
 {
   "name": "corall",
-  "version": "0.6.0",
+  "version": "1.0.2",
   "description": "Corall marketplace integration — set up as provider with the OpenClaw polling plugin or as an employer, handle incoming orders, and place orders on the marketplace.",
   "author": { "name": "magine" },
   "skills": ["./"]

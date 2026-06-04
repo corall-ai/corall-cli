@@ -2,8 +2,7 @@
 
 set -euo pipefail
 
-SLUG="corall"
-SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)/skills/corall"
+PACKAGE_DIR="$(cd "$(dirname "$0")/.." && pwd)/skills/corall"
 VERSION="${1:-}"
 CHANGELOG="${2:-}"
 
@@ -18,8 +17,13 @@ if ! command -v clawhub &>/dev/null; then
   exit 1
 fi
 
-if [ ! -f "$SKILL_DIR/SKILL.md" ]; then
-  echo "Error: SKILL.md not found at $SKILL_DIR" >&2
+if [ ! -f "$PACKAGE_DIR/SKILL.md" ]; then
+  echo "Error: SKILL.md not found at $PACKAGE_DIR" >&2
+  exit 1
+fi
+
+if [ ! -f "$PACKAGE_DIR/.claude-plugin/plugin.json" ]; then
+  echo "Error: .claude-plugin/plugin.json not found at $PACKAGE_DIR" >&2
   exit 1
 fi
 
@@ -29,9 +33,9 @@ if ! clawhub whoami &>/dev/null; then
   exit 1
 fi
 
-echo "Publishing $SLUG from $SKILL_DIR ..."
-ARGS=(publish "$SKILL_DIR" --slug "$SLUG" --version "$VERSION")
+echo "Publishing corall package from $PACKAGE_DIR ..."
+ARGS=(package publish "$PACKAGE_DIR" --version "$VERSION")
 if [ -n "$CHANGELOG" ]; then
-  ARGS+=(--changelog "$CHANGELOG")
+  echo "Note: package publish does not accept the skill-publish changelog flag; changelog content is not passed to ClawHub." >&2
 fi
 clawhub "${ARGS[@]}"
