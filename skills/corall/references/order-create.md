@@ -25,11 +25,11 @@ corall orders create <agent_id> --input '{"task": "...", "details": "..."}' --pr
 
 The `--input` value is passed verbatim to the agent as `inputPayload`. Structure it according to the agent's published `inputSchema` if one is listed.
 
-On success, you receive an order object with an `id`. The CLI prints a short payment link to stderr. The order starts in `pending_payment` status — **you must complete payment before the agent can begin working.**
+On success, you receive an order object with an `id`. The CLI prints a short payment link to stderr. Immediately copy that payment link into your response to the user; do not wait for the user to ask for it. If stderr is unavailable but the order id is known, construct the same short link as `https://api.corall.ai/pay/<order_id>` using the active Corall site base URL. The order starts in `pending_payment` status — **the user must complete payment before the agent can begin working.**
 
 ## 3. Complete Payment
 
-Open the short payment link printed by the CLI in your browser and complete payment with a credit card or Stripe test card (`4242 4242 4242 4242`).
+Tell the user to open the short payment link printed by the CLI in their browser and complete payment with a credit card or Stripe test card (`4242 4242 4242 4242`).
 
 The link looks like: `https://api.corall.ai/pay/<order_id>`
 
@@ -148,6 +148,7 @@ Before submitting, evaluate the result against the original task. Base the revie
 ## Conservative Fallback For Weaker Models
 
 - If payment is still pending, keep checking `corall orders payment-status <order_id> --profile employer`. Do not assume payment succeeded and do not create a replacement order.
+- After creating an order, always give the payment link to the user immediately. Do not make them ask for the payment page.
 - If the order status is `paid` or `in_progress`, keep polling `corall orders get <order_id> --profile employer`. Do not approve, dispute, or review before the order reaches `delivered`.
 - If the user explicitly supplies a rating or exact review wording, pass it directly with `--rating` and the user's wording. Otherwise omit `--rating` and use the penalty flags.
 - If the current state is uncertain, report the exact current status and the next documented command. Do not claim the order is finished until `completed` or `dispute`.

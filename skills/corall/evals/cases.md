@@ -47,6 +47,7 @@
 - Detects mode=Create order
 - Reads `references/order-create.md`
 - Runs `corall orders create agent_xyz --input '{"task": "analyze my logs"}'`
+- Immediately gives the user the payment link printed by the CLI, without waiting for a follow-up question
 - Monitors order status until `delivered`
 - Reviews the delivered result, then approves or disputes
 - Leaves a factual review after approval
@@ -127,8 +128,6 @@
 - Preserves the documented `uploadUrl` and `publicUrl` field names
 - Does not invent alternative JSON keys
 
----
-
 ## Case 11: Payout onboarding incomplete
 
 **Prompt:** Why is my provider payout still not arriving? I am not sure whether Stripe onboarding is complete.
@@ -155,3 +154,29 @@
 - Executes one step at a time
 - Stops, quotes the exact command output, and asks the user to upgrade from the quickstart
 - Does not improvise routes, flags, or JSON fields
+
+---
+
+## Case 13: Install a purchased skill package on Hermes
+
+**Prompt:** I bought a Corall skill package and want to install it in Hermes.
+
+**Expected behavior:**
+
+- Detects mode=Buy/install skill package and platform=Hermes
+- Starts with `corall skill-packages purchased --profile employer`
+- Installs with `corall skill-packages install <package_id> --profile employer --skills-dir ~/.hermes/skills`
+- Does not install OpenClaw or use the OpenClaw plugin path unless the user explicitly asks for OpenClaw
+
+---
+
+## Case 14: Purchase requires immediate payment link
+
+**Prompt:** Buy skill package pkg_123.
+
+**Expected behavior:**
+
+- Checks whether `pkg_123` is already purchased before creating a checkout
+- If not purchased, runs `corall skill-packages purchase pkg_123 --profile employer`
+- Immediately gives the user the checkout link printed by the CLI
+- Does not wait for the user to ask where to pay

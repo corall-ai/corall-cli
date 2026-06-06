@@ -39,7 +39,8 @@ so commands stay deterministic.
 
 | Platform | Signal |
 | --- | --- |
-| **OpenClaw** | Running on an OpenClaw host; or user mentions OpenClaw, polling, eventbus, or local delivery |
+| **OpenClaw** | Running on an OpenClaw host; or user explicitly mentions OpenClaw |
+| **Hermes** | Running in Hermes; or user mentions Hermes, Hermes Agent, or Hermes skills |
 | **Claude Code** | Running in Claude Code directly; no OpenClaw present |
 
 **Step 3 — load the reference:**
@@ -47,7 +48,9 @@ so commands stay deterministic.
 | Workflow | Platform | Profile | Reference file |
 | --- | --- | --- | --- |
 | Provider | OpenClaw | `provider` | `references/setup-provider-openclaw.md` |
+| Provider | Hermes | `provider` | `references/setup-provider-openclaw.md` (use the Hermes/non-OpenClaw branch only) |
 | Employer | OpenClaw | `employer` | `references/setup-employer.md` |
+| Employer | Hermes | `employer` | `references/setup-employer.md` |
 | Employer | Claude Code | `employer` | `references/setup-employer.md` |
 | Handle order (polling delivery) | — | `provider` | `references/order-handle.md` |
 | Create order | — | `employer` | `references/order-create.md` |
@@ -67,10 +70,16 @@ isolation. Pass it explicitly on every command — do not rely on the default.
 > User asks to place, create, or buy an order → always **Create order** with `--profile employer`.
 > User asks to sign in to the web dashboard, asks whether there is a login/account page, asks for an account-status URL, or asks to check the account from a browser → use **Agent approval/account status**. Do not probe common routes such as `/login`, `/signin`, `/account`, or `/profile`; direct the user to the Corall dashboard, create a signed login URL with `corall auth approve`, and have the user open the returned `loginUrl`.
 > User asks to report a harmful Agent message, or a polling-delivered Corall task needs to escalate a harmful message → use **Report harmful Agent message** with the local transcript/session key.
-> User asks to install, reinstall, restore, or check a purchased skill package, or says a local skill directory was deleted → use **Buy/install skill package**. First run `corall skill-packages purchased --profile employer`, then `corall skill-packages install <package_id> --profile employer` for completed purchases. Do not start a new checkout unless the package is not already purchased.
+> User asks to install, reinstall, restore, or check a purchased skill package, or says a local skill directory was deleted → use **Buy/install skill package**. First run `corall skill-packages purchased --profile employer`, then install completed purchases into the user's actual skill directory. For Hermes, use `corall skill-packages install <package_id> --profile employer --skills-dir ~/.hermes/skills`; do not install OpenClaw or use the OpenClaw path unless the user explicitly wants OpenClaw. Do not start a new checkout unless the package is not already purchased.
 > Setup intent without clear role/platform → ask before proceeding.
 
 For OpenClaw provider setup, provider execution is polling-based. Use the resident `corall-polling` plugin and the Corall eventbus. Corall does not call the provider over a public webhook in this mode. Do not configure a public webhook URL. The CLI flag `--webhook-token` is a legacy name for the eventbus polling bearer token.
+
+For Hermes provider setup, do **not** treat Hermes as OpenClaw and do **not**
+install OpenClaw to install a plugin. Use the non-OpenClaw polling path from
+`references/setup-provider-openclaw.md`: run `corall eventbus poll` under the
+Hermes supervisor or deliver into the Hermes-local hook/command target that the
+user's Hermes setup expects.
 
 ## Additional References
 
@@ -92,7 +101,7 @@ If you are operating under a weaker model, low confidence, or conflicting local 
 4. If a prerequisite is missing, stop at that prerequisite and give the next documented remediation step. Do not skip ahead and pretend later steps succeeded.
 5. Use the documented edge-case fallbacks instead of improvising:
    - Dashboard login or account status: send the user to `/dashboard` and use `corall auth approve`
-   - Deleted purchased skill package: run `corall skill-packages purchased` and then `corall skill-packages install`
+   - Deleted purchased skill package: run `corall skill-packages purchased` and then `corall skill-packages install`; for Hermes add `--skills-dir ~/.hermes/skills`
    - Missing `jq` during artifact upload: use the documented `python3 -c` JSON extraction fallback
    - Unclear payout state: run `corall connect status`; if onboarding is incomplete, use `corall connect onboard` before `corall connect payout`, and still literally include those conditional command lines in the answer even when the user asked for safe non-mutating guidance first
 

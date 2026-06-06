@@ -36,10 +36,13 @@ pub enum SkillPackagesCommand {
     Purchase { id: String },
     /// List skill packages purchased by the current user
     Purchased,
-    /// Install a purchased skill package into OpenClaw
+    /// Install a purchased skill package into a local skills directory
     Install {
         id: String,
-        /// OpenClaw directory that contains the skills/ folder
+        /// Install directly into this skills directory, e.g. ~/.hermes/skills
+        #[arg(long, conflicts_with = "openclaw_dir")]
+        skills_dir: Option<PathBuf>,
+        /// OpenClaw directory that contains the skills/ folder (legacy alias)
         #[arg(long)]
         openclaw_dir: Option<PathBuf>,
         /// Replace an existing local skill directory
@@ -91,6 +94,9 @@ pub async fn run(cmd: SkillPackagesCommand, profile: &str) -> Result<()> {
             let resp = client
                 .post_empty(&format!("/api/skill-packages/{id}/purchase"))
                 .await?;
+            if let Some(url) = skill_package_checkout_url(&resp, client.base_url(), &id) {
+                eprintln!("Open this URL in your browser to complete payment:\n  {url}");
+            }
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
         SkillPackagesCommand::Purchased => {
@@ -101,6 +107,7 @@ pub async fn run(cmd: SkillPackagesCommand, profile: &str) -> Result<()> {
         }
         SkillPackagesCommand::Install {
             id,
+            skills_dir,
             openclaw_dir,
             force,
         } => {
@@ -108,7 +115,7 @@ pub async fn run(cmd: SkillPackagesCommand, profile: &str) -> Result<()> {
             let mut client = ApiClient::from_credential(&cred, profile).await?;
             let resp = client.get("/api/skill-packages/purchased").await?;
             let package = find_purchased_package(&resp, &id)?;
-            let installed = install_skill_package(package, openclaw_dir, force)?;
+            let installed = install_skill_package(package, skills_dir, openclaw_dir, force)?;
             println!("{}", serde_json::to_string_pretty(&installed)?);
         }
         SkillPackagesCommand::Delete { id } => {
@@ -217,6 +224,7 @@ fn find_purchased_package<'a>(resp: &'a Value, id: &str) -> Result<&'a Value> {
 
 fn install_skill_package(
     package: &Value,
+    skills_dir: Option<PathBuf>,
     openclaw_dir: Option<PathBuf>,
     force: bool,
 ) -> Result<Value> {
@@ -239,8 +247,12 @@ fn install_skill_package(
         .filter(|files| !files.is_empty())
         .context("skills.source.files must contain at least one file")?;
 
-    let root = openclaw_dir.unwrap_or(default_openclaw_dir()?);
-    let skills_dir = root.join("skills");
+    let skills_dir = match (skills_dir, openclaw_dir) {
+        (Some(skills_dir), None) => skills_dir,
+        (None, Some(root)) => root.join("skills"),
+        (None, None) => default_openclaw_dir()?.join("skills"),
+        (Some(_), Some(_)) => unreachable!("clap enforces conflicting install targets"),
+    };
     let skill_dir = skills_dir.join(skill_name);
 
     if skill_dir.exists() {
@@ -316,6 +328,36 @@ fn install_skill_package(
     }))
 }
 
+fn skill_package_checkout_url(resp: &Value, base_url: &str, package_id: &str) -> Option<String> {
+    for key in [
+        "checkoutUrl",
+        "checkoutURL",
+        "paymentUrl",
+        "paymentURL",
+        "url",
+    ] {
+        if let Some(url) = resp.get(key).and_then(Value::as_str) {
+            return Some(url.to_string());
+        }
+    }
+    resp.get("purchase")
+        .and_then(|purchase| {
+            for key in [
+                "checkoutUrl",
+                "checkoutURL",
+                "paymentUrl",
+                "paymentURL",
+                "url",
+            ] {
+                if let Some(url) = purchase.get(key).and_then(Value::as_str) {
+                    return Some(url.to_string());
+                }
+            }
+            None
+        })
+        .or_else(|| Some(format!("{base_url}/skill-packages/{package_id}/checkout")))
+}
+
 fn default_openclaw_dir() -> Result<PathBuf> {
     Ok(dirs::home_dir()
         .context("cannot determine home directory")?
@@ -384,7 +426,7 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
         let package = package_with_source();
 
-        let result = install_skill_package(&package, Some(root.clone()), false).unwrap();
+        let result = install_skill_package(&package, None, Some(root.clone()), false).unwrap();
 
         assert_eq!(result["installed"], true);
         let skill_dir = root.join("skills").join("public-ip");
@@ -402,13 +444,31 @@ mod tests {
         let root = test_dir("install-overwrite");
         let _ = fs::remove_dir_all(&root);
         let package = package_with_source();
-        install_skill_package(&package, Some(root.clone()), false).unwrap();
+        install_skill_package(&package, None, Some(root.clone()), false).unwrap();
 
-        let err = install_skill_package(&package, Some(root.clone()), false).unwrap_err();
+        let err = install_skill_package(&package, None, Some(root.clone()), false).unwrap_err();
         assert!(err.to_string().contains("already exists"));
 
-        install_skill_package(&package, Some(root.clone()), true).unwrap();
+        install_skill_package(&package, None, Some(root.clone()), true).unwrap();
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn installs_skill_package_into_explicit_skills_dir() {
+        let skills_dir = test_dir("install-skills-dir");
+        let _ = fs::remove_dir_all(&skills_dir);
+        let package = package_with_source();
+
+        let result =
+            install_skill_package(&package, Some(skills_dir.clone()), None, false).unwrap();
+
+        assert_eq!(result["installed"], true);
+        assert_eq!(
+            result["path"],
+            Value::String(skills_dir.join("public-ip").display().to_string())
+        );
+        assert!(skills_dir.join("public-ip").join("SKILL.md").is_file());
+        let _ = fs::remove_dir_all(skills_dir);
     }
 
     #[test]
@@ -420,9 +480,24 @@ mod tests {
                 "description": { "summary": "metadata only" }
             }
         });
-        let err =
-            install_skill_package(&package, Some(test_dir("missing-source")), false).unwrap_err();
+        let err = install_skill_package(&package, None, Some(test_dir("missing-source")), false)
+            .unwrap_err();
         assert!(err.to_string().contains("installable source files"));
+    }
+
+    #[test]
+    fn builds_skill_package_checkout_url_from_response_or_package_id() {
+        let resp = json!({ "checkoutUrl": "https://pay.example/checkout" });
+        assert_eq!(
+            skill_package_checkout_url(&resp, "https://api.example", "pkg_123").as_deref(),
+            Some("https://pay.example/checkout")
+        );
+
+        let resp = json!({});
+        assert_eq!(
+            skill_package_checkout_url(&resp, "https://api.example", "pkg_123").as_deref(),
+            Some("https://api.example/skill-packages/pkg_123/checkout")
+        );
     }
 
     fn package_with_source() -> Value {

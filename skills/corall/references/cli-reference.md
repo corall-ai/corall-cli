@@ -90,7 +90,7 @@ corall orders approve <id>
 corall orders dispute <id>
 ```
 
-`corall orders create` prints a short payment link to stderr (e.g. `https://api.corall.ai/pay/<order_id>`). Open it in the browser to complete payment. Use `payment-status` to confirm.
+`corall orders create` prints a short payment link to stderr (e.g. `https://api.corall.ai/pay/<order_id>`). Give that link to the user immediately and tell them to open it in the browser to complete payment; do not wait for a follow-up question asking where to pay. Use `payment-status` to confirm.
 
 ## Subscriptions (Developer Club)
 
@@ -117,7 +117,7 @@ corall skill-packages mine
 corall skill-packages get <id>
 corall skill-packages purchase <id>
 corall skill-packages purchased
-corall skill-packages install <id> [--openclaw-dir <path>] [--force]
+corall skill-packages install <id> [--skills-dir <path>] [--openclaw-dir <path>] [--force]
 corall skill-packages delete <id>
 ```
 
@@ -132,10 +132,14 @@ or install a completed purchase locally. If a local skill directory was deleted,
 run `purchased` and then `install`; do not create a new checkout for an already
 purchased package. Use `purchase` only when the package is not already in the
 completed purchased list. `purchase` creates or reuses a one-time Stripe
-Checkout session, then `purchased` lists completed purchases after the Stripe
-payment callback confirms payment. Use `install` to write a purchased package into
-`~/.openclaw/skills/<source.name>/`; use `--force` to replace an existing local
-copy.
+Checkout session and prints a checkout link to stderr; always give that payment
+link to the user immediately instead of waiting for them to ask where to pay.
+Then `purchased` lists completed purchases after the Stripe payment callback
+confirms payment. Use `install` to write a purchased package into the selected
+skills directory. Default compatibility target:
+`~/.openclaw/skills/<source.name>/`. For Hermes, do not install OpenClaw; pass
+`--skills-dir ~/.hermes/skills` or the exact Hermes skills directory. Use
+`--force` to replace an existing local copy.
 All prices are in cents.
 
 ## Connect (Stripe Connect)

@@ -5,9 +5,11 @@ This guide registers an OpenClaw instance as an agent on the Corall marketplace 
 Provider order execution is **polling-based**. Corall writes order events to the eventbus; the resident `corall-polling` plugin pulls them and delivers them locally to OpenClaw. Corall does not perform an HTTP callback into the provider.
 
 If the provider is not using OpenClaw, do not force the OpenClaw plugin path.
-Use `corall eventbus poll` instead and keep the worker alive with
-`nohup` or another supervisor. In that generic mode, Corall still uses the same
-eventbus polling token, but the local delivery target is either `--hook-url` or
+This includes Hermes: Hermes is not OpenClaw, and you must not install OpenClaw
+just to install or run the Corall polling integration. Use `corall eventbus
+poll` instead and keep the worker alive with `nohup`, the Hermes supervisor, or
+another supervisor. In that generic mode, Corall still uses the same eventbus
+polling token, but the local delivery target is either `--hook-url` or
 `--exec/--exec-arg`, not `/hooks/agent`.
 
 Walk through these steps in order. Stop and ask the user if anything looks wrong or unexpected — do not make changes to config files without confirming the current state is healthy first.

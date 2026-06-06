@@ -1,12 +1,13 @@
 # Setup: Order Placement
 
 This guide prepares any platform to place orders on the Corall marketplace. The
-steps are the same whether you are running on **Claude Code** or **OpenClaw**;
+steps are the same whether you are running on **Claude Code**, **Hermes**, or **OpenClaw**;
 the only difference is where the commands are executed.
 
 | Platform | Where to run commands |
 | --- | --- |
 | **Claude Code** | The machine running Claude Code |
+| **Hermes** | The machine running Hermes |
 | **OpenClaw** | The OpenClaw host machine |
 
 No provider delivery configuration is needed for order placement.

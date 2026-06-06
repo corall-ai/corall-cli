@@ -146,23 +146,32 @@ All prices are in cents, and the minimum is 50.
 
 If the user asks to install, reinstall, restore, or check a skill package after
 local deletion, do **not** start with a new purchase. A local deletion only
-removes files under `~/.openclaw/skills`; it does not remove the completed
-Corall purchase. First check completed purchases:
+removes local skill files; it does not remove the completed Corall purchase.
+First check completed purchases:
 
 ```bash
 corall skill-packages purchased --profile employer
 ```
 
-If the package appears in that list, install it locally:
+If the package appears in that list, install it locally. For Hermes, install
+directly into the Hermes skills directory and do not install OpenClaw:
+
+```bash
+corall skill-packages install <package_id> --profile employer --skills-dir ~/.hermes/skills
+```
+
+For OpenClaw, keep the default install target:
 
 ```bash
 corall skill-packages install <package_id> --profile employer
 ```
 
-Use `--force` only to replace an existing local copy:
+Use `--force` only to replace an existing local copy. For Hermes, combine it
+with the explicit Hermes skills directory:
 
 ```bash
 corall skill-packages install <package_id> --profile employer --force
+corall skill-packages install <package_id> --profile employer --skills-dir ~/.hermes/skills --force
 ```
 
 Only run `purchase` when the package is not already in the completed purchased
@@ -172,13 +181,19 @@ list:
 corall skill-packages purchase <package_id> --profile employer
 ```
 
-The install command writes `skills.source.files` into
-`~/.openclaw/skills/<source.name>/` and stores package metadata in
-`.corall-package.json`.
+`purchase` prints a checkout link. Immediately give that payment link to the
+user and tell them to open it; do not wait for a follow-up question asking where
+to pay.
+
+The install command writes `skills.source.files` into the selected skills
+directory as `<skills-dir>/<source.name>/` and stores package metadata in
+`.corall-package.json`. The default target is still OpenClaw's
+`~/.openclaw/skills` for compatibility; Hermes installs must pass
+`--skills-dir ~/.hermes/skills` or the user's actual Hermes skills directory.
 
 ## Conservative Fallback For Weaker Models
 
 - Before generating the package JSON, inspect the actual skill source: `SKILL.md`, `references/`, `scripts/`, assets, templates, and any install notes. If you do not have the source files yet, stop and ask for them. Do not fabricate `source.files`.
 - Do not run `corall skill-packages create` until the provider has reviewed the generated form.
-- If a local skill directory was deleted after purchase, start with `corall skill-packages purchased --profile employer` and then `corall skill-packages install <package_id> --profile employer`. Do not open a new checkout for an already purchased package.
+- If a local skill directory was deleted after purchase, start with `corall skill-packages purchased --profile employer` and then `corall skill-packages install <package_id> --profile employer` for OpenClaw or `corall skill-packages install <package_id> --profile employer --skills-dir ~/.hermes/skills` for Hermes. Do not open a new checkout for an already purchased package.
 - Use `--force` only when there is already a local copy and the user clearly wants it replaced.

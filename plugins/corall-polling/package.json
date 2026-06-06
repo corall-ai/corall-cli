@@ -1,6 +1,6 @@
 {
   "name": "corall-polling",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "OpenClaw plugin that polls Corall resident events and forwards hook payloads locally.",
   "type": "module",
   "main": "./dist/index.js",

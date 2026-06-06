@@ -48,6 +48,9 @@ fn skill_routes_corall_prompts_to_the_expected_modes() {
         SKILL,
         "Corall does not call the provider over a public webhook in this mode",
     );
+    assert_contains(SKILL, "| **Hermes** |");
+    assert_contains(SKILL, "do **not** treat Hermes as OpenClaw");
+    assert_contains(SKILL, "--skills-dir ~/.hermes/skills");
     assert_contains(SKILL, "Do not configure a public webhook URL");
     assert_contains(SKILL, "Conservative Fallback For Weaker Models");
     assert_contains(SKILL, "Run the exact documented commands and flags");
@@ -117,6 +120,11 @@ fn order_create_prompt_matches_current_cli_responses_and_statuses() {
     assert_contains(ORDER_CREATE, "Do not assume payment succeeded");
     assert_contains(
         ORDER_CREATE,
+        "Immediately copy that payment link into your response to the user",
+    );
+    assert_contains(ORDER_CREATE, "Do not make them ask for the payment page");
+    assert_contains(
+        ORDER_CREATE,
         "Do not approve, dispute, or review before the order reaches `delivered`",
     );
     assert_contains(ORDER_CREATE, "report the exact current status");
@@ -165,6 +173,9 @@ fn provider_setup_prompt_uses_polling_and_explicit_provider_profile() {
         "update that agent's polling token instead of creating a duplicate",
     );
     assert_contains(SETUP_PROVIDER, "If the provider is not using OpenClaw");
+    assert_contains(SETUP_PROVIDER, "This includes Hermes");
+    assert_contains(SETUP_PROVIDER, "Hermes is not OpenClaw");
+    assert_contains(SETUP_PROVIDER, "the Hermes supervisor");
     assert_contains(SETUP_PROVIDER, "keep the worker alive with");
     assert_contains(SETUP_PROVIDER, "`nohup`");
     assert_contains(SETUP_PROVIDER, "`--hook-url`");
@@ -185,6 +196,14 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     assert_contains(CLI_REFERENCE, "corall skill-packages create");
     assert_contains(CLI_REFERENCE, "corall skill-packages form-template");
     assert_contains(CLI_REFERENCE, "corall skill-packages install");
+    assert_contains(CLI_REFERENCE, "[--skills-dir <path>]");
+    assert_contains(CLI_REFERENCE, "For Hermes, do not install OpenClaw");
+    assert_contains(CLI_REFERENCE, "--skills-dir ~/.hermes/skills");
+    assert_contains(
+        CLI_REFERENCE,
+        "always give that payment",
+    );
+    assert_contains(CLI_REFERENCE, "link to the user immediately");
     assert_contains(CLI_REFERENCE, "source.files");
     assert_contains(CLI_REFERENCE, "If a local skill directory was deleted");
     assert_contains(CLI_REFERENCE, "do not create a new checkout");
@@ -257,6 +276,11 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     assert_contains(SKILL_PACKAGE_SUBMIT, "\"source\"");
     assert_contains(SKILL_PACKAGE_SUBMIT, "\"path\": \"SKILL.md\"");
     assert_contains(SKILL_PACKAGE_SUBMIT, "corall skill-packages install");
+    assert_contains(SKILL_PACKAGE_SUBMIT, "--skills-dir ~/.hermes/skills");
+    assert_contains(
+        SKILL_PACKAGE_SUBMIT,
+        "Immediately give that payment link to the",
+    );
     assert_contains(SKILL_PACKAGE_SUBMIT, "do **not** start with a new purchase");
     assert_contains(
         SKILL_PACKAGE_SUBMIT,
@@ -276,6 +300,7 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
         "Do not run `corall skill-packages create` until the provider has reviewed the generated form",
     );
     assert_contains(SETUP_EMPLOYER, "Conservative Fallback For Weaker Models");
+    assert_contains(SETUP_EMPLOYER, "**Hermes**");
     assert_contains(
         SETUP_EMPLOYER,
         "Do not invent `--site-url`, `--display-name`, email, or password fields",
@@ -309,6 +334,8 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     assert_contains(EVAL_CASES, "Deleted purchased skill package");
     assert_contains(EVAL_CASES, "Artifact upload without jq");
     assert_contains(EVAL_CASES, "Payout onboarding incomplete");
+    assert_contains(EVAL_CASES, "Install a purchased skill package on Hermes");
+    assert_contains(EVAL_CASES, "Purchase requires immediate payment link");
     assert_contains(
         EVAL_CASES,
         "Still names `corall connect payout --profile provider` as the next action after onboarding is complete",
