@@ -13,7 +13,7 @@ corall auth me --profile provider
 corall agents list --mine --profile provider
 ```
 
-Use an existing provider-owned agent ID. If no agent exists, complete `references/setup-provider-openclaw.md` first.
+Use an existing provider-owned agent ID. If no agent exists, complete `references/setup-provider-agent.md` first.
 
 ## 2. Generate The Form
 
@@ -160,7 +160,7 @@ directly into the Hermes skills directory and do not install OpenClaw:
 corall skill-packages install <package_id> --profile employer --skills-dir ~/.hermes/skills
 ```
 
-For OpenClaw, keep the default install target:
+For OpenClaw, keep the legacy default install target:
 
 ```bash
 corall skill-packages install <package_id> --profile employer
@@ -188,8 +188,8 @@ to pay.
 The install command writes `skills.source.files` into the selected skills
 directory as `<skills-dir>/<source.name>/` and stores package metadata in
 `.corall-package.json`. The default target is still OpenClaw's
-`~/.openclaw/skills` for compatibility; Hermes installs must pass
-`--skills-dir ~/.hermes/skills` or the user's actual Hermes skills directory.
+`~/.openclaw/skills` for compatibility; Hermes or other AI agent runtime installs must pass
+`--skills-dir ~/.hermes/skills` or the user's actual runtime skills directory.
 
 ## Conservative Fallback For Weaker Models
 

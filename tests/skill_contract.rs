@@ -1,7 +1,7 @@
 const SKILL: &str = include_str!("../skills/corall/SKILL.md");
 const ORDER_HANDLE: &str = include_str!("../skills/corall/references/order-handle.md");
 const ORDER_CREATE: &str = include_str!("../skills/corall/references/order-create.md");
-const SETUP_PROVIDER: &str = include_str!("../skills/corall/references/setup-provider-openclaw.md");
+const SETUP_PROVIDER: &str = include_str!("../skills/corall/references/setup-provider-agent.md");
 const SETUP_EMPLOYER: &str = include_str!("../skills/corall/references/setup-employer.md");
 const SKILL_PACKAGE_SUBMIT: &str =
     include_str!("../skills/corall/references/skill-package-submit.md");
@@ -19,7 +19,7 @@ fn skill_routes_corall_prompts_to_the_expected_modes() {
     assert_contains(SKILL, "references/order-handle.md");
     assert_contains(SKILL, "references/order-create.md");
     assert_contains(SKILL, "references/skill-package-submit.md");
-    assert_contains(SKILL, "references/setup-provider-openclaw.md");
+    assert_contains(SKILL, "references/setup-provider-agent.md");
     assert_contains(SKILL, "references/agent-approval.md");
     assert_contains(SKILL, "references/report-agent.md");
     assert_contains(SKILL, "Pass it explicitly on every command");
@@ -44,12 +44,9 @@ fn skill_routes_corall_prompts_to_the_expected_modes() {
         SKILL,
         "same Corall user can publish agents, place orders, or do both",
     );
-    assert_contains(
-        SKILL,
-        "Corall does not call the provider over a public webhook in this mode",
-    );
+    assert_contains(SKILL, "AI agent runtime");
     assert_contains(SKILL, "| **Hermes** |");
-    assert_contains(SKILL, "do **not** treat Hermes as OpenClaw");
+    assert_contains(SKILL, "tested adapter");
     assert_contains(SKILL, "--skills-dir ~/.hermes/skills");
     assert_contains(SKILL, "Do not configure a public webhook URL");
     assert_contains(SKILL, "Conservative Fallback For Weaker Models");
@@ -57,7 +54,7 @@ fn skill_routes_corall_prompts_to_the_expected_modes() {
     assert_contains(SKILL, "quote the exact command and output");
     assert_contains(SKILL, "Deleted purchased skill package");
     assert_contains(SKILL, "Missing `jq` during artifact upload");
-    assert_contains(PLUGIN_JSON, "OpenClaw polling plugin");
+    assert_contains(PLUGIN_JSON, "AI agent runtime");
     assert_not_contains(PLUGIN_JSON, "OpenClaw webhook");
 }
 
@@ -135,8 +132,9 @@ fn order_create_prompt_matches_current_cli_responses_and_statuses() {
 
 #[test]
 fn provider_setup_prompt_uses_polling_and_explicit_provider_profile() {
-    assert_contains(SETUP_PROVIDER, "resident Corall polling plugin");
-    assert_contains(SETUP_PROVIDER, "corall openclaw setup");
+    assert_contains(SETUP_PROVIDER, "AI agent runtime");
+    assert_contains(SETUP_PROVIDER, "OpenClaw and Hermes are tested adapters");
+    assert_contains(SETUP_PROVIDER, "corall runtime setup --runtime openclaw");
     assert_contains(SETUP_PROVIDER, "--eventbus-url");
     assert_contains(
         SETUP_PROVIDER,
@@ -158,7 +156,7 @@ fn provider_setup_prompt_uses_polling_and_explicit_provider_profile() {
     );
     assert_contains(
         SETUP_PROVIDER,
-        "`--webhook-url`: Do not set this for OpenClaw polling mode.",
+        "`--webhook-url`: Do not set this for polling mode.",
     );
     assert_contains(SETUP_PROVIDER, "eventbus polling bearer token");
     assert_contains(SETUP_PROVIDER, "If the command shape differs");
@@ -172,9 +170,8 @@ fn provider_setup_prompt_uses_polling_and_explicit_provider_profile() {
         SETUP_PROVIDER,
         "update that agent's polling token instead of creating a duplicate",
     );
-    assert_contains(SETUP_PROVIDER, "If the provider is not using OpenClaw");
-    assert_contains(SETUP_PROVIDER, "This includes Hermes");
-    assert_contains(SETUP_PROVIDER, "Hermes is not OpenClaw");
+    assert_contains(SETUP_PROVIDER, "For generic AI agents");
+    assert_contains(SETUP_PROVIDER, "Hermes can use this generic polling path");
     assert_contains(SETUP_PROVIDER, "the Hermes supervisor");
     assert_contains(SETUP_PROVIDER, "keep the worker alive with");
     assert_contains(SETUP_PROVIDER, "`nohup`");
@@ -184,7 +181,10 @@ fn provider_setup_prompt_uses_polling_and_explicit_provider_profile() {
         SETUP_PROVIDER,
         "the local delivery target is either `--hook-url` or",
     );
-    assert_contains(SETUP_PROVIDER, "`--exec/--exec-arg`, not `/hooks/agent`");
+    assert_contains(
+        SETUP_PROVIDER,
+        "`--exec/--exec-arg`, not an OpenClaw-only endpoint",
+    );
     assert_not_contains(SETUP_PROVIDER, "\\   #");
 }
 
@@ -197,12 +197,12 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     assert_contains(CLI_REFERENCE, "corall skill-packages form-template");
     assert_contains(CLI_REFERENCE, "corall skill-packages install");
     assert_contains(CLI_REFERENCE, "[--skills-dir <path>]");
-    assert_contains(CLI_REFERENCE, "For Hermes, do not install OpenClaw");
-    assert_contains(CLI_REFERENCE, "--skills-dir ~/.hermes/skills");
     assert_contains(
         CLI_REFERENCE,
-        "always give that payment",
+        "For Hermes or another AI agent runtime, do not install OpenClaw",
     );
+    assert_contains(CLI_REFERENCE, "--skills-dir ~/.hermes/skills");
+    assert_contains(CLI_REFERENCE, "always give that payment");
     assert_contains(CLI_REFERENCE, "link to the user immediately");
     assert_contains(CLI_REFERENCE, "source.files");
     assert_contains(CLI_REFERENCE, "If a local skill directory was deleted");
@@ -214,7 +214,7 @@ fn eval_cases_and_cli_reference_follow_current_contract() {
     assert_contains(CLI_REFERENCE, "--hook-url");
     assert_contains(CLI_REFERENCE, "--exec");
     assert_contains(CLI_REFERENCE, "--exec-arg");
-    assert_contains(CLI_REFERENCE, "non-OpenClaw equivalent");
+    assert_contains(CLI_REFERENCE, "generic AI agent equivalent");
     assert_contains(CLI_REFERENCE, "local HTTP endpoint via `--hook-url`");
     assert_contains(CLI_REFERENCE, "written to stdin");
     assert_contains(CLI_REFERENCE, "CORALL_EVENT_ID");

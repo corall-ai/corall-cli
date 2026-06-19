@@ -6,6 +6,7 @@ pub mod eventbus;
 pub mod openclaw;
 pub mod orders;
 pub mod reviews;
+pub mod runtime;
 pub mod skill_packages;
 pub mod subscriptions;
 pub mod upgrade;

@@ -136,9 +136,9 @@ Checkout session and prints a checkout link to stderr; always give that payment
 link to the user immediately instead of waiting for them to ask where to pay.
 Then `purchased` lists completed purchases after the Stripe payment callback
 confirms payment. Use `install` to write a purchased package into the selected
-skills directory. Default compatibility target:
-`~/.openclaw/skills/<source.name>/`. For Hermes, do not install OpenClaw; pass
-`--skills-dir ~/.hermes/skills` or the exact Hermes skills directory. Use
+skills directory. Legacy compatibility target:
+`~/.openclaw/skills/<source.name>/`. For Hermes or another AI agent runtime, do not install OpenClaw; pass
+`--skills-dir ~/.hermes/skills` or the exact runtime skills directory. Use
 `--force` to replace an existing local copy.
 All prices are in cents.
 
@@ -171,15 +171,23 @@ corall reviews create <order_id> [--rating <0.0-5.0>] [--comment <text>] [--revi
 
 If the user explicitly gave a rating, pass `--rating` and Corall will use it directly. If the user did not specify a rating, omit `--rating` and use the penalty flags instead; Corall converts them into the stored decimal 5-point score. Zero penalties yields `5.0`.
 
-## OpenClaw
+## Agent Runtime Delivery
 
 ```text
+corall runtime setup [--runtime <generic|openclaw>] [--webhook-token <token>] [--eventbus-url <url>] [--config <path>] [--skip-plugin-install] [--hook-url <url>] [--exec <program>] [--exec-arg <arg>]...
 corall openclaw setup [--webhook-token <token>] [--eventbus-url <url>] [--config <path>] [--skip-plugin-install]
 corall eventbus serve [--listen <host:port>] [--redis-url <url>] [--consumer-group <name>] [--default-wait-ms <ms>] [--max-wait-ms <ms>] [--default-count <n>] [--max-count <n>] [--claim-idle-ms <ms>]
 corall eventbus poll [--base-url <url>] [--agent-id <id>] [--webhook-token <token>] [--consumer-id <id>] [--wait-ms <ms>] [--request-timeout-ms <ms>] [--ack-timeout-ms <ms>] [--idle-delay-ms <ms>] [--error-backoff-ms <ms>] [--max-error-backoff-ms <ms>] [--recent-event-ttl-ms <ms>] [--hook-url <url>] [--hook-token <token>] [--exec <program>] [--exec-arg <arg>]...
 ```
 
-Merges Corall polling-delivery settings into the OpenClaw config file. Sets
+`corall runtime setup` is the AI-agent-runtime-first setup entrypoint. Use
+`--runtime openclaw` for the tested OpenClaw adapter, or the default generic
+mode for other AI agent runtimes that need to choose a local `--hook-url` or
+`--exec` delivery target. OpenClaw and Hermes are tested adapters; other
+runtimes are best-effort and may require the agent to inspect its local runtime.
+
+`corall openclaw setup` is a legacy alias for the OpenClaw-specific adapter.
+The OpenClaw adapter merges Corall polling-delivery settings into the OpenClaw config file. Sets
 OpenClaw's local delivery fields `hooks.enabled`, `hooks.token`,
 `hooks.allowRequestSessionKey`, and adds `"hook:"` to
 `allowedSessionKeyPrefixes` (existing prefixes are preserved).
@@ -209,7 +217,7 @@ registrations from `corall:eventbus:agent:<agent_id>:registration`, serves
 `POST /v1/agents/:agent_id/events/:event_id/ack`, and consumes agent streams
 from `corall:eventbus:agent:<agent_id>:stream`.
 
-`corall eventbus poll` is the non-OpenClaw equivalent of the resident polling
+`corall eventbus poll` is the generic AI agent equivalent of the resident polling
 plugin. It long-polls the eventbus with the same bearer token and then delivers
 each event either:
 

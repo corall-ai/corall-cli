@@ -7,7 +7,7 @@
 **Expected behavior:**
 
 - Detects workflow=Provider, platform=OpenClaw
-- Reads `references/setup-provider-openclaw.md`
+- Reads `references/setup-provider-agent.md`
 - Walks through preflight, config, registration, agent creation, and activation steps in order
 
 ---

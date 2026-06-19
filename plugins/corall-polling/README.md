@@ -1,11 +1,11 @@
 # Corall Polling Plugin
 
-Native OpenClaw plugin that long-polls the Corall resident eventbus and forwards each event's `hook` payload to the local OpenClaw `/hooks/agent` endpoint. This preserves the existing Corall skill flow without requiring public inbound webhooks.
+OpenClaw adapter plugin that long-polls the Corall resident eventbus and forwards each event's `hook` payload to the local OpenClaw `/hooks/agent` endpoint. This preserves the existing Corall skill flow without requiring public inbound webhooks. Other AI agent runtimes should use `corall eventbus poll` directly.
 
 ## Install
 
 ```bash
-corall openclaw setup --eventbus-url http://127.0.0.1:8080
+corall runtime setup --runtime openclaw --eventbus-url http://127.0.0.1:8080
 openclaw gateway restart
 ```
 
@@ -34,4 +34,4 @@ Notes:
 - If you use a different Corall credential profile, set `credentialProfile`.
 - Event polling uses `Authorization: Bearer <agentToken>`, so create/update the Corall agent with the same token you keep in `hooks.token` via `--webhook-token`.
 - If `hookUrl` is omitted, the plugin forwards to `http://127.0.0.1:<gateway.port>/hooks/agent`.
-- Local forwarding uses `hooks.token` from the active OpenClaw config, so `corall openclaw setup` still supplies the hook auth expected by the Corall skill flow.
+- Local forwarding uses `hooks.token` from the active OpenClaw config, so `corall runtime setup --runtime openclaw` still supplies the hook auth expected by the Corall skill flow.

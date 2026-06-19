@@ -7,6 +7,7 @@ use std::process::Command;
 use anyhow::Context;
 use anyhow::Result;
 use anyhow::bail;
+use clap::Args;
 use clap::Subcommand;
 use rand::Rng;
 use serde_json::Value;
@@ -85,147 +86,153 @@ pub enum OpenclawCommand {
     ///
     /// hooks.token is preserved from the existing config unless --webhook-token
     /// is supplied explicitly, so re-running setup does not rotate the token.
-    Setup {
-        /// Webhook token to write to hooks.token. Must match the webhookToken
-        /// registered on your Corall agent. If omitted and a token is already
-        /// present in the config, that token is kept unchanged. If there is no
-        /// existing token, a cryptographically secure random token is generated
-        /// (32 random bytes as hex, same format as OpenClaw's own auto-generated
-        /// tokens) and printed in the output so you can copy it when registering
-        /// the agent.
-        #[arg(long)]
-        webhook_token: Option<String>,
+    Setup(OpenclawSetupArgs),
+}
 
-        /// Path to openclaw.json. Defaults to the standard OpenClaw location
-        /// resolved via OPENCLAW_CONFIG_PATH, OPENCLAW_STATE_DIR, or
-        /// ~/.openclaw/openclaw.json (with legacy path fallback).
-        #[arg(long)]
-        config: Option<PathBuf>,
+#[derive(Args, Debug, Clone)]
+pub struct OpenclawSetupArgs {
+    /// Webhook token to write to hooks.token. Must match the webhookToken
+    /// registered on your Corall agent. If omitted and a token is already
+    /// present in the config, that token is kept unchanged. If there is no
+    /// existing token, a cryptographically secure random token is generated
+    /// (32 random bytes as hex, same format as OpenClaw's own auto-generated
+    /// tokens) and printed in the output so you can copy it when registering
+    /// the agent.
+    #[arg(long)]
+    pub webhook_token: Option<String>,
 
-        /// Corall eventbus base URL used by the resident corall-polling plugin.
-        /// Defaults to CORALL_EVENTBUS_URL when set. If omitted, the plugin is
-        /// still installed but waits until baseUrl is configured.
-        #[arg(long)]
-        eventbus_url: Option<String>,
+    /// Path to openclaw.json. Defaults to the standard OpenClaw location
+    /// resolved via OPENCLAW_CONFIG_PATH, OPENCLAW_STATE_DIR, or
+    /// ~/.openclaw/openclaw.json (with legacy path fallback).
+    #[arg(long)]
+    pub config: Option<PathBuf>,
 
-        /// Only update OpenClaw hooks/config; do not install the resident plugin.
-        #[arg(long)]
-        skip_plugin_install: bool,
-    },
+    /// Corall eventbus base URL used by the resident corall-polling plugin.
+    /// Defaults to CORALL_EVENTBUS_URL when set. If omitted, the plugin is
+    /// still installed but waits until baseUrl is configured.
+    #[arg(long)]
+    pub eventbus_url: Option<String>,
+
+    /// Only update OpenClaw hooks/config; do not install the resident plugin.
+    #[arg(long)]
+    pub skip_plugin_install: bool,
 }
 
 pub async fn run(cmd: OpenclawCommand) -> Result<()> {
     match cmd {
-        OpenclawCommand::Setup {
-            webhook_token,
-            config,
-            eventbus_url,
-            skip_plugin_install,
-        } => {
-            let config_path = match config {
-                Some(p) => p,
-                None => resolve_config_path()?.ok_or_else(|| {
-                    anyhow::anyhow!(
-                        "OpenClaw config not found. Install OpenClaw and run it at least once\n\
-                         to create the config file, then re-run this command.\n\
-                         See: https://openclaw.io\n\
-                         \n\
-                         If your config is in a non-standard location, pass --config <path>."
-                    )
-                })?,
-            };
-
-            // `resolve_config_path` only returns paths that exist. When
-            // --config is passed explicitly, the file might not exist yet.
-            if !config_path.exists() {
-                bail!(
-                    "OpenClaw config not found at {}.\n\
-                     Make sure OpenClaw is installed and has been run at least once.",
-                    config_path.display()
-                );
-            }
-
-            let raw = fs::read_to_string(&config_path)
-                .with_context(|| format!("failed to read {}", config_path.display()))?;
-            // OpenClaw configs are JSON5 (allow comments, trailing commas).
-            let mut cfg: Value = json5::from_str(&raw)
-                .with_context(|| format!("failed to parse {}", config_path.display()))?;
-
-            if !cfg.is_object() {
-                bail!("{} is not a JSON object", config_path.display());
-            }
-
-            // Resolve token: explicit arg > existing config value > newly generated.
-            // A token already in the config is preserved unless --webhook-token is
-            // supplied, so re-running setup does not rotate the token by accident.
-            let existing_token = cfg["hooks"]["token"].as_str().map(str::to_owned);
-            let (token, generated, kept) = match webhook_token {
-                Some(t) => (t, false, false),
-                None => match existing_token {
-                    Some(t) => (t, false, true),
-                    None => (generate_token(), true, false),
-                },
-            };
-
-            let original_cfg = cfg.clone();
-            apply_hooks(&mut cfg, &token);
-            apply_gateway_defaults(&mut cfg)?;
-            let plugin_base_url = eventbus_url.or_else(|| env::var("CORALL_EVENTBUS_URL").ok());
-            let staged_plugin = if skip_plugin_install {
-                None
-            } else {
-                let staged = stage_embedded_polling_plugin()?;
-                apply_polling_plugin_config(&mut cfg, plugin_base_url.as_deref());
-                Some(staged)
-            };
-            let changed = cfg != original_cfg;
-
-            if changed {
-                let content = serde_json::to_string_pretty(&cfg)?;
-                fs::write(&config_path, &content)
-                    .with_context(|| format!("failed to write {}", config_path.display()))?;
-            }
-
-            let plugin_install = if let Some(staged) = staged_plugin {
-                install_openclaw_plugin(&staged)?;
-                PluginInstallResult::installed(staged)
-            } else {
-                PluginInstallResult::skipped()
-            };
-
-            // Report what was written.
-            //
-            // `webhookToken` is included when the token was auto-generated or kept
-            // from the existing config, so callers always have the token value
-            // available without needing to read the config file themselves.
-            // When the token was provided by the caller via --webhook-token it is
-            // already known, so we omit it to avoid echoing secrets.
-            let prefixes = cfg["hooks"]["allowedSessionKeyPrefixes"].clone();
-            let mut result = json!({
-                "configPath": config_path.display().to_string(),
-                "changed": changed,
-                "tokenGenerated": generated,
-                "tokenKept": kept,
-                "applied": {
-                    "hooks": {
-                        "enabled": true,
-                        "allowRequestSessionKey": true,
-                        "allowedSessionKeyPrefixes": prefixes,
-                    },
-                    "gateway": {
-                        "mode": cfg["gateway"]["mode"],
-                        "bind": cfg["gateway"]["bind"],
-                    },
-                },
-                "plugin": plugin_install.to_json(plugin_base_url.as_deref()),
-            });
-            if generated || kept {
-                result["webhookToken"] = json!(token);
-            }
+        OpenclawCommand::Setup(args) => {
+            let result = setup_openclaw(args)?;
             println!("{}", serde_json::to_string_pretty(&result)?);
         }
     }
     Ok(())
+}
+
+pub fn setup_openclaw(args: OpenclawSetupArgs) -> Result<Value> {
+    let config_path = match args.config {
+        Some(p) => p,
+        None => resolve_config_path()?.ok_or_else(|| {
+            anyhow::anyhow!(
+                "OpenClaw config not found. Install OpenClaw and run it at least once\n\
+                         to create the config file, then re-run this command.\n\
+                         See: https://openclaw.io\n\
+                         \n\
+                         If your config is in a non-standard location, pass --config <path>."
+            )
+        })?,
+    };
+
+    // `resolve_config_path` only returns paths that exist. When
+    // --config is passed explicitly, the file might not exist yet.
+    if !config_path.exists() {
+        bail!(
+            "OpenClaw config not found at {}.\n\
+                     Make sure OpenClaw is installed and has been run at least once.",
+            config_path.display()
+        );
+    }
+
+    let raw = fs::read_to_string(&config_path)
+        .with_context(|| format!("failed to read {}", config_path.display()))?;
+    // OpenClaw configs are JSON5 (allow comments, trailing commas).
+    let mut cfg: Value = json5::from_str(&raw)
+        .with_context(|| format!("failed to parse {}", config_path.display()))?;
+
+    if !cfg.is_object() {
+        bail!("{} is not a JSON object", config_path.display());
+    }
+
+    // Resolve token: explicit arg > existing config value > newly generated.
+    // A token already in the config is preserved unless --webhook-token is
+    // supplied, so re-running setup does not rotate the token by accident.
+    let existing_token = cfg["hooks"]["token"].as_str().map(str::to_owned);
+    let (token, generated, kept) = match args.webhook_token {
+        Some(t) => (t, false, false),
+        None => match existing_token {
+            Some(t) => (t, false, true),
+            None => (generate_token(), true, false),
+        },
+    };
+
+    let original_cfg = cfg.clone();
+    apply_hooks(&mut cfg, &token);
+    apply_gateway_defaults(&mut cfg)?;
+    let plugin_base_url = args
+        .eventbus_url
+        .or_else(|| env::var("CORALL_EVENTBUS_URL").ok());
+    let staged_plugin = if args.skip_plugin_install {
+        None
+    } else {
+        let staged = stage_embedded_polling_plugin()?;
+        apply_polling_plugin_config(&mut cfg, plugin_base_url.as_deref());
+        Some(staged)
+    };
+    let changed = cfg != original_cfg;
+
+    if changed {
+        let content = serde_json::to_string_pretty(&cfg)?;
+        fs::write(&config_path, &content)
+            .with_context(|| format!("failed to write {}", config_path.display()))?;
+    }
+
+    let plugin_install = if let Some(staged) = staged_plugin {
+        install_openclaw_plugin(&staged)?;
+        PluginInstallResult::installed(staged)
+    } else {
+        PluginInstallResult::skipped()
+    };
+
+    // Report what was written.
+    //
+    // `webhookToken` is included when the token was auto-generated or kept
+    // from the existing config, so callers always have the token value
+    // available without needing to read the config file themselves.
+    // When the token was provided by the caller via --webhook-token it is
+    // already known, so we omit it to avoid echoing secrets.
+    let prefixes = cfg["hooks"]["allowedSessionKeyPrefixes"].clone();
+    let mut result = json!({
+        "runtime": "openclaw",
+        "configPath": config_path.display().to_string(),
+        "changed": changed,
+        "tokenGenerated": generated,
+        "tokenKept": kept,
+        "applied": {
+            "hooks": {
+                "enabled": true,
+                "allowRequestSessionKey": true,
+                "allowedSessionKeyPrefixes": prefixes,
+            },
+            "gateway": {
+                "mode": cfg["gateway"]["mode"],
+                "bind": cfg["gateway"]["bind"],
+            },
+        },
+        "plugin": plugin_install.to_json(plugin_base_url.as_deref()),
+    });
+    if generated || kept {
+        result["webhookToken"] = json!(token);
+    }
+    Ok(result)
 }
 
 struct PluginInstallResult {

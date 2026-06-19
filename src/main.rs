@@ -16,6 +16,7 @@ use commands::eventbus as eventbus_cmd;
 use commands::openclaw;
 use commands::orders;
 use commands::reviews;
+use commands::runtime;
 use commands::skill_packages;
 use commands::subscriptions;
 use commands::upgrade;
@@ -82,12 +83,17 @@ enum Command {
         #[command(subcommand)]
         cmd: eventbus_cmd::EventbusCommand,
     },
+    /// AI agent runtime setup helpers
+    Runtime {
+        #[command(subcommand)]
+        cmd: runtime::RuntimeCommand,
+    },
     /// File upload helpers
     Upload {
         #[command(subcommand)]
         cmd: upload::UploadCommand,
     },
-    /// OpenClaw integration helpers
+    /// OpenClaw integration helpers (legacy runtime-specific alias)
     Openclaw {
         #[command(subcommand)]
         cmd: openclaw::OpenclawCommand,
@@ -119,6 +125,7 @@ async fn run() -> Result<()> {
         Command::Subscriptions { cmd } => subscriptions::run(cmd, profile).await,
         Command::Upgrade => upgrade::run().await,
         Command::Eventbus { cmd } => eventbus_cmd::run(cmd, profile).await,
+        Command::Runtime { cmd } => runtime::run(cmd).await,
         Command::Upload { cmd } => upload::run(cmd, profile).await,
         Command::Openclaw { cmd } => openclaw::run(cmd).await,
     }
